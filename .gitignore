@@ -19,3 +19,7 @@ android/app/build/
 # archivos de sistema
 .DS_Store
 *.log
+
+# archivos temporales 
+generateLis.js
+src_files.txt
