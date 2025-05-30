@@ -1,0 +1,21 @@
+# .gitignore
+
+# entorno de Python
+venv/
+__pycache__/
+*.py[cod]
+*.env
+
+# migraciones de Flask-Migrate
+migrations/
+
+# Node / React Native
+node_modules/
+ios/Pods/
+android/.gradle/
+android/app/build/
+*.keystore
+
+# archivos de sistema
+.DS_Store
+*.log
