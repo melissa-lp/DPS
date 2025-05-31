@@ -1,7 +1,7 @@
 //eventos_frontend\src\navigation\AppDrawer.js
 import React from "react";
 import { createDrawerNavigator } from "@react-navigation/drawer";
-import EventsListScreen from "../screens/EventsListScreen";
+import EventsStack from "./EventsStack";
 import CreateEventScreen from "../screens/CreateEventScreen";
 import LogoutScreen from "../screens/LogoutScreen";
 
@@ -10,15 +10,15 @@ const Drawer = createDrawerNavigator();
 export default function AppDrawer() {
   return (
     <Drawer.Navigator
-      initialRouteName="EventsList"
+      initialRouteName="EventsStack"
       screenOptions={{
-        headerShown: true,
+        headerShown: false,
         drawerType: "front",
       }}
     >
       <Drawer.Screen
-        name="EventsList"
-        component={EventsListScreen}
+        name="EventsStack"
+        component={EventsStack}
         options={{ title: "Lista de Eventos" }}
       />
       <Drawer.Screen
