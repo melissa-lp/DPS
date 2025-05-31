@@ -17,7 +17,7 @@ export default function LoginScreen({ navigation }) {
 
       navigation.reset({
         index: 0,
-        routes: [{ name: "EventsList" }],
+        routes: [{ name: "Main" }],
       });
     } catch (err) {
       Alert.alert("Error", err.response?.data?.error || err.message);
