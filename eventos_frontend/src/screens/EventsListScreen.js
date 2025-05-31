@@ -24,12 +24,9 @@ export default function EventsListScreen({ navigation }) {
           headers: { Authorization: `Bearer ${token}` },
         });
 
-        // Procesar las fechas correctamente
         const processedEvents = res.data.map((event) => ({
           ...event,
-          // Asegurarse de que event_date es un objeto Date
           event_date: new Date(event.event_date),
-          // Calcular is_past correctamente
           is_past: new Date(event.event_date) < new Date(),
         }));
 

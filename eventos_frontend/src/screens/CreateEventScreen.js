@@ -15,9 +15,9 @@ import client from "../api/client";
 export default function CreateEventScreen({ navigation }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [eventDate, setEventDate] = useState(""); // ISO yyyy-mm-ddTHH:MM:SS
+  const [eventDate, setEventDate] = useState("");
   const [location, setLocation] = useState("");
-  const [licenseCode, setLicenseCode] = useState("CC-BY"); // valor por defecto
+  const [licenseCode, setLicenseCode] = useState("CC-BY");
 
   const submit = async () => {
     if (!title.trim() || !eventDate.trim() || !licenseCode.trim()) {
