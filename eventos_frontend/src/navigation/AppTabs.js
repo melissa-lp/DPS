@@ -1,7 +1,10 @@
+// eventos_frontend/src/navigation/AppTabs.js
+
 import React from "react";
 import { Platform } from "react-native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import EventsStack from "./EventsStack";
 import MyEventsScreen from "../screens/MyEventsScreen";
@@ -11,6 +14,8 @@ import ProfileScreen from "../screens/ProfileScreen";
 const Tab = createBottomTabNavigator();
 
 export default function AppTabs() {
+  const insets = useSafeAreaInsets();
+
   return (
     <Tab.Navigator
       initialRouteName="EventsStack"
@@ -18,17 +23,20 @@ export default function AppTabs() {
         headerShown: false,
         tabBarActiveTintColor: "#007AFF",
         tabBarInactiveTintColor: "#8e8e93",
+
+        tabBarStyle: {
+          backgroundColor: "#fff",
+          borderTopColor: "#eee",
+
+          paddingBottom: insets.bottom,
+          paddingTop: 8,
+        },
+
         tabBarLabelStyle: {
           fontSize: 12,
           marginBottom: Platform.OS === "ios" ? 0 : 4,
         },
-        tabBarStyle: {
-          backgroundColor: "#fff",
-          borderTopColor: "#eee",
-          height: Platform.OS === "ios" ? 80 : 70,
-          paddingBottom: Platform.OS === "ios" ? 20 : 10,
-          paddingTop: 8,
-        },
+
         tabBarIcon: ({ color, size }) => {
           let iconName;
           switch (route.name) {

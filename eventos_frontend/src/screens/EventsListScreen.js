@@ -62,28 +62,22 @@ function EventCard({ event, onPress }) {
         : {})}
     >
       <View style={cardStyle}>
-        {/** TÍTULO (más grande) **/}
         <Text style={styles.cardTitle}>{event.title}</Text>
 
-        {/** FECHA formateada sin hora **/}
         <Text style={styles.cardDate}>
           {formatSpanishDate(event.event_date)}
         </Text>
 
-        {/** UBICACIÓN (si existe) **/}
         {event.location ? (
           <Text style={styles.cardLocation}>📍 {event.location}</Text>
         ) : null}
 
-        {/** DESCRIPCIÓN (hasta 2 líneas) **/}
         <Text style={styles.cardDesc} numberOfLines={2}>
           {event.description || "Sin descripción."}
         </Text>
 
-        {/** Etiqueta "Pasado" si corresponde **/}
         {isPast && <Text style={styles.pastLabel}>📌 Pasado</Text>}
 
-        {/** BOTÓN "Ver evento" **/}
         <TouchableOpacity style={styles.viewButton} onPress={onPress}>
           <Text style={styles.viewButtonText}>Ver evento</Text>
         </TouchableOpacity>
@@ -112,17 +106,15 @@ export default function EventsListScreen({ navigation }) {
       try {
         const token = await AsyncStorage.getItem("userToken");
 
-        // 1) Obtener perfil
         const profileRes = await client.get("/me", {
           headers: { Authorization: `Bearer ${token}` },
         });
         setProfile(profileRes.data);
 
-        // 2) Obtener eventos
         const res = await client.get("/events", {
           headers: { Authorization: `Bearer ${token}` },
         });
-        // Procesamos cada evento para determinar si ya pasó o es futuro
+
         const processedEvents = res.data.map((event) => ({
           ...event,
           event_date: new Date(event.event_date),
@@ -169,21 +161,18 @@ export default function EventsListScreen({ navigation }) {
     );
   }
 
-  // Filtrar eventos según su estado
   const proximos = events.filter((e) => !e.is_past);
   const pasados = events.filter((e) => e.is_past);
 
   return (
     <SafeAreaView style={styles.safeContainer}>
       <View style={styles.screenContainer}>
-        {/** ── HEADER SUPERIOR SOLO EN MÓVIL ── **/}
         {!isDesktop && (
           <View style={styles.mobileHeader}>
             <TouchableOpacity onPress={() => setIsMenuOpen(true)}>
               <Ionicons name="menu-outline" size={32} color="#333" />
             </TouchableOpacity>
-            <Text style={styles.mobileHeaderTitle}>Mis Eventos</Text>
-            {/* Placeholder para centrar el título */}
+            <Text style={styles.mobileHeaderTitle}>Eventos</Text>
             <View style={{ width: 32 }} />
           </View>
         )}
@@ -208,7 +197,6 @@ export default function EventsListScreen({ navigation }) {
               <Text style={styles.profileUsername}>@{profile.username}</Text>
             </View>
 
-            {/** Botones de menú **/}
             <View style={styles.menuContainer}>
               <TouchableOpacity
                 style={styles.menuItem}
@@ -326,7 +314,7 @@ export default function EventsListScreen({ navigation }) {
                       color="#007AFF"
                     />
                     <Text style={[styles.menuText, styles.menuTextActive]}>
-                      Mis eventos
+                      Eventos asistidos
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -335,9 +323,8 @@ export default function EventsListScreen({ navigation }) {
           </Modal>
         )}
 
-        {/** ── CONTENIDO PRINCIPAL: pestañas y tarjetas de eventos ── **/}
+        {/** ── CONTENIDO PRINCIPAL ── **/}
         <View style={styles.eventsColumn}>
-          {/** Pestañas: "Próximos" y "Pasados" **/}
           <View
             style={[
               styles.tabsContainer,
@@ -378,13 +365,11 @@ export default function EventsListScreen({ navigation }) {
             </TouchableOpacity>
           </View>
 
-          {/** Contenido de la pestaña activa **/}
           <ScrollView
             style={styles.scrollContainer}
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
           >
-            {/** PESTAÑA "Pasados" **/}
             {activeTab === "Pasados" && (
               <View style={styles.sectionContainer}>
                 <Text style={styles.sectionHeader}>Eventos pasados</Text>
@@ -408,7 +393,6 @@ export default function EventsListScreen({ navigation }) {
               </View>
             )}
 
-            {/** PESTAÑA "Próximos" **/}
             {activeTab === "Proximos" && (
               <View style={styles.sectionContainer}>
                 <Text style={styles.sectionHeader}>Próximos eventos</Text>
@@ -433,7 +417,6 @@ export default function EventsListScreen({ navigation }) {
             )}
           </ScrollView>
 
-          {/** Botón flotante para crear evento (solo en móvil) **/}
           {!isDesktop && (
             <TouchableOpacity
               style={styles.fab}
@@ -449,13 +432,11 @@ export default function EventsListScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  // ─────────── Safe Area Container ───────────
   safeContainer: {
     flex: 1,
     backgroundColor: "#F7F9FC",
   },
 
-  // ─────────── Pantalla principal ───────────
   screenContainer: {
     flex: 1,
     flexDirection: "row",
@@ -474,7 +455,6 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
 
-  // ── HEADER EN MÓVIL ──
   mobileHeader: {
     position: "absolute",
     top: 0,
@@ -501,9 +481,8 @@ const styles = StyleSheet.create({
     color: "#333",
   },
 
-  // ── SIDEBAR (Perfil + Menú) ──
   profileColumn: {
-    width: 240, // ancho fijo en escritorio
+    width: 240,
     backgroundColor: "#FFFFFF",
     borderRightWidth: 1,
     borderRightColor: "#E5E7EB",
@@ -557,7 +536,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
 
-  // ── OVERLAY DE MENÚ EN MÓVIL ──
   overlayBackground: {
     position: "absolute",
     top: 0,
@@ -587,7 +565,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
-  // ── CONTENIDO PRINCIPAL (Eventos) ──
   eventsColumn: {
     flex: 1,
     backgroundColor: "#F7F9FC",
@@ -605,7 +582,7 @@ const styles = StyleSheet.create({
     zIndex: 5,
   },
   tabsContainerMobile: {
-    marginTop: 56, // Height of mobile header - only applied on mobile
+    marginTop: 56,
   },
   tabItem: {
     flex: 1,
@@ -633,7 +610,7 @@ const styles = StyleSheet.create({
     marginTop: 0,
   },
   scrollContent: {
-    paddingBottom: 100, // Extra space for FAB
+    paddingBottom: 100,
   },
   sectionContainer: {
     paddingHorizontal: 16,
@@ -653,7 +630,6 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
   },
 
-  // ── TARJETA DE EVENTO ──
   cardContainer: {
     marginBottom: 16,
   },
@@ -733,7 +709,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 
-  // ── FAB (solo en móvil) ──
   fab: {
     position: "absolute",
     right: 20,
@@ -751,7 +726,6 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
 
-  // ── Botón "Ir a Login"  ──
   logoutButton: {
     backgroundColor: "#E5E7EB",
     borderRadius: 12,

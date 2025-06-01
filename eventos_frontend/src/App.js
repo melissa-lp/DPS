@@ -1,12 +1,13 @@
 // eventos_frontend/src/App.js
 
 import React, { useEffect, useState } from "react";
-import { NavigationContainer } from "@react-navigation/native";
 import { ActivityIndicator, View } from "react-native";
+import { NavigationContainer } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { SafeAreaProvider } from "react-native-safe-area-context";
+import Toast from "react-native-toast-message";
 
 import RootStack from "./navigation/RootStack";
-import Toast from "react-native-toast-message";
 
 export default function App() {
   const [isLoading, setIsLoading] = useState(true);
@@ -35,9 +36,11 @@ export default function App() {
   }
 
   return (
-    <NavigationContainer>
-      <RootStack initialRouteName={userToken ? "Main" : "Auth"} />
-      <Toast />
-    </NavigationContainer>
+    <SafeAreaProvider>
+      <NavigationContainer>
+        <RootStack initialRouteName={userToken ? "Main" : "Auth"} />
+        <Toast />
+      </NavigationContainer>
+    </SafeAreaProvider>
   );
 }

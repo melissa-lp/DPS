@@ -1,4 +1,4 @@
-//eventos_frontend\src\screens\StatsScreen.js
+// eventos_frontend/src/screens/StatsScreen.js
 
 import React, { useEffect, useState } from "react";
 import {
@@ -8,9 +8,9 @@ import {
   ActivityIndicator,
   StyleSheet,
   FlatList,
-  SectionList,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Ionicons } from "@expo/vector-icons";
 import client from "../api/client";
 
 export default function StatsScreen() {
@@ -58,19 +58,36 @@ export default function StatsScreen() {
   const renderHistoryItem = ({ item }) => {
     return (
       <View style={styles.historyCard}>
-        <Text style={styles.historyTitle}>{item.event_title}</Text>
-        <Text style={styles.historyDate}>
-          {new Date(item.event_date).toLocaleDateString()}
-        </Text>
-        <Text style={styles.historyLabel}>Asistentes:</Text>
+        <View style={styles.cardHeader}>
+          <Ionicons name="time-outline" size={24} color="#007AFF" />
+          <Text style={styles.historyTitle}>{item.event_title}</Text>
+        </View>
+        <View style={styles.cardSubHeader}>
+          <Ionicons name="calendar-outline" size={16} color="#555" />
+          <Text style={styles.historyDate}>
+            {new Date(item.event_date).toLocaleDateString()}
+          </Text>
+        </View>
+        <View style={styles.historyBody}>
+          <Ionicons name="people-outline" size={16} color="#555" />
+          <Text style={styles.historyLabel}>Asistentes:</Text>
+        </View>
         {item.attendees.length > 0 ? (
           item.attendees.map((user) => (
-            <Text key={user.user_id} style={styles.attendeeText}>
-              • {user.full_name} (@{user.username})
-            </Text>
+            <View key={user.user_id} style={styles.attendeeRow}>
+              <Ionicons name="person-outline" size={14} color="#444" />
+              <Text style={styles.attendeeText}>
+                {user.full_name} (@{user.username})
+              </Text>
+            </View>
           ))
         ) : (
-          <Text style={styles.attendeeText}>— Ninguno</Text>
+          <View style={styles.attendeeRow}>
+            <Ionicons name="person-outline" size={14} color="#aaa" />
+            <Text style={[styles.attendeeText, { color: "#aaa" }]}>
+              — Ninguno
+            </Text>
+          </View>
         )}
       </View>
     );
@@ -79,14 +96,26 @@ export default function StatsScreen() {
   const renderStatItem = ({ item }) => {
     return (
       <View style={styles.statCard}>
-        <Text style={styles.statTitle}>{item.event_title}</Text>
-        <Text style={styles.statLine}>Total RSVPs: {item.total_rsvps}</Text>
-        <Text style={styles.statLine}>
-          Asistencias confirmadas: {item.accepted_count}
-        </Text>
-        <Text style={styles.statLine}>
-          Calificación promedio: {item.average_rating.toFixed(1)}
-        </Text>
+        <View style={styles.cardHeader}>
+          <Ionicons name="bar-chart-outline" size={24} color="#007AFF" />
+          <Text style={styles.statTitle}>{item.event_title}</Text>
+        </View>
+        <View style={styles.statRow}>
+          <Ionicons name="chatbubble-ellipses-outline" size={16} color="#555" />
+          <Text style={styles.statLine}>Total RSVPs: {item.total_rsvps}</Text>
+        </View>
+        <View style={styles.statRow}>
+          <Ionicons name="checkmark-done-outline" size={16} color="#555" />
+          <Text style={styles.statLine}>
+            Asistencias: {item.accepted_count}
+          </Text>
+        </View>
+        <View style={styles.statRow}>
+          <Ionicons name="star-outline" size={16} color="#555" />
+          <Text style={styles.statLine}>
+            Rating: {item.average_rating.toFixed(1)} / 5
+          </Text>
+        </View>
       </View>
     );
   };
@@ -101,6 +130,11 @@ export default function StatsScreen() {
           ]}
           onPress={() => setActiveTab("historial")}
         >
+          <Ionicons
+            name="time-outline"
+            size={18}
+            color={activeTab === "historial" ? "#007AFF" : "#555"}
+          />
           <Text
             style={[
               styles.tabText,
@@ -118,6 +152,11 @@ export default function StatsScreen() {
           ]}
           onPress={() => setActiveTab("estadisticas")}
         >
+          <Ionicons
+            name="bar-chart-outline"
+            size={18}
+            color={activeTab === "estadisticas" ? "#007AFF" : "#555"}
+          />
           <Text
             style={[
               styles.tabText,
@@ -136,6 +175,7 @@ export default function StatsScreen() {
           </View>
         ) : historyData.length === 0 ? (
           <View style={styles.emptyContainer}>
+            <Ionicons name="warning-outline" size={40} color="#aaa" />
             <Text style={styles.emptyText}>No hay eventos pasados.</Text>
           </View>
         ) : (
@@ -152,6 +192,7 @@ export default function StatsScreen() {
         </View>
       ) : statsData.length === 0 ? (
         <View style={styles.emptyContainer}>
+          <Ionicons name="warning-outline" size={40} color="#aaa" />
           <Text style={styles.emptyText}>No hay estadísticas disponibles.</Text>
         </View>
       ) : (
@@ -179,8 +220,10 @@ const styles = StyleSheet.create({
   },
   tabButton: {
     flex: 1,
-    paddingVertical: 14,
+    flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 12,
   },
   tabButtonActive: {
     borderBottomWidth: 3,
@@ -189,6 +232,7 @@ const styles = StyleSheet.create({
   tabText: {
     fontSize: 16,
     color: "#555",
+    marginLeft: 6,
   },
   tabTextActive: {
     color: "#007AFF",
@@ -207,12 +251,12 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 16,
     color: "#666",
+    marginTop: 8,
   },
-
   historyCard: {
     backgroundColor: "#FFFFFF",
-    borderRadius: 8,
-    padding: 12,
+    borderRadius: 10,
+    padding: 16,
     marginBottom: 12,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
@@ -220,34 +264,53 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
+  cardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  cardSubHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+  },
   historyTitle: {
     fontSize: 18,
     fontWeight: "700",
     color: "#333",
-    marginBottom: 4,
+    marginLeft: 8,
   },
   historyDate: {
     fontSize: 14,
     color: "#555",
-    marginBottom: 8,
+    marginLeft: 4,
+  },
+  historyBody: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 4,
   },
   historyLabel: {
     fontSize: 15,
     fontWeight: "600",
     color: "#222",
-    marginBottom: 4,
+    marginLeft: 6,
+  },
+  attendeeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginLeft: 12,
+    marginBottom: 2,
   },
   attendeeText: {
     fontSize: 14,
     color: "#444",
-    marginLeft: 12,
-    marginBottom: 2,
+    marginLeft: 4,
   },
-
   statCard: {
     backgroundColor: "#fff",
-    borderRadius: 8,
-    padding: 12,
+    borderRadius: 10,
+    padding: 16,
     marginBottom: 12,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
@@ -258,12 +321,17 @@ const styles = StyleSheet.create({
   statTitle: {
     fontSize: 18,
     fontWeight: "700",
-    marginBottom: 6,
+    marginLeft: 8,
     color: "#333",
+  },
+  statRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 6,
   },
   statLine: {
     fontSize: 14,
     color: "#555",
-    marginBottom: 3,
+    marginLeft: 6,
   },
 });

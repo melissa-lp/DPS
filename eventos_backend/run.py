@@ -230,35 +230,34 @@ def create_app():
     @jwt_required()
     def stats():
         """
-        Devuelve estadísticas solo para eventos pasados, 
-        comparando event_date < UTC_TIMESTAMP() dentro de MySQL.
+        Devuelve estadísticas solo para eventos pasados.
         """
         sql = """
             SELECT
-            event_id,
-            event_title,
-            total_rsvps,
-            accepted_count,
-            IFNULL(average_rating, 0) AS average_rating
-            FROM event_stats
-            WHERE event_id IN (
-                SELECT id
-                FROM events
-                WHERE event_date < UTC_TIMESTAMP()
-            )
+                es.event_id,
+                es.event_title,
+                es.total_rsvps,
+                IFNULL(es.accepted_count, 0)   AS accepted_count,
+                IFNULL(es.average_rating, 0)   AS average_rating
+            FROM event_stats AS es
+            JOIN events e ON e.id = es.event_id
+            WHERE e.event_date < NOW()
         """
-        result = db.session.execute(sql).fetchall()
-        rows = []
-        for row in result:
-            rows.append({
-                "event_id":       row["event_id"],
-                "event_title":    row["event_title"],
-                "total_rsvps":    int(row["total_rsvps"]),
-                "accepted_count": int(row["accepted_count"]),
-                "average_rating": float(row["average_rating"])
+        consulta = text(sql)
+        filas = db.session.execute(consulta).mappings().all()
+
+        resultado = []
+        for fila in filas:
+            resultado.append({
+                "event_id":       int(fila["event_id"]),
+                "event_title":    fila["event_title"],
+                "total_rsvps":    int(fila["total_rsvps"]),
+                "accepted_count": int(fila["accepted_count"]),
+                "average_rating": float(fila["average_rating"])
             })
-        return jsonify(rows), 200
-    
+
+        return jsonify(resultado), 200
+
     @app.route('/rsvps/<int:event_id>', methods=['GET'])
     @jwt_required()
     def get_rsvp_status(event_id):
