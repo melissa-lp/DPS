@@ -1,4 +1,5 @@
 // eventos_frontend/src/screens/EventsListScreen.js
+
 import React, { useEffect, useState } from "react";
 import {
   View,
@@ -7,23 +8,16 @@ import {
   StyleSheet,
   ActivityIndicator,
   Image,
-  Dimensions,
   ScrollView,
   Platform,
+  Modal,
+  SafeAreaView,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import client from "../api/client";
+import { useWindowDimensions } from "react-native";
 
-const { width } = Dimensions.get("window");
-const PROFILE_WIDTH = width * 0.25; // 25% para la columna de perfil en pantallas anchas
-const AVATAR_SIZE = 80;
-const CARD_MARGIN = 16;
-
-/**
- * Función para formatear una fecha en español: "DD-mes-AAAA"
- * Ejemplo: 1-mayo-2025
- */
 function formatSpanishDate(date) {
   const day = date.getDate();
   const monthIndex = date.getMonth();
@@ -45,14 +39,6 @@ function formatSpanishDate(date) {
   return `${day}-${monthNames[monthIndex]}-${year}`;
 }
 
-/**
- * EventCard: tarjeta individual de evento
- * - Muestra título, fecha (formateada), ubicación, descripción
- * - Si está en el pasado, muestra etiqueta “📌 Pasado”
- * - Botón “Ver evento” que llama a onPress
- * - Ocupa el 100% del ancho del contenedor
- * - En web, habilita hover que cambia fondo y sombra
- */
 function EventCard({ event, onPress }) {
   const [isHovered, setIsHovered] = useState(false);
   const isPast = event.is_past;
@@ -94,10 +80,10 @@ function EventCard({ event, onPress }) {
           {event.description || "Sin descripción."}
         </Text>
 
-        {/** Etiqueta “Pasado” si corresponde **/}
+        {/** Etiqueta "Pasado" si corresponde **/}
         {isPast && <Text style={styles.pastLabel}>📌 Pasado</Text>}
 
-        {/** BOTÓN “Ver evento” **/}
+        {/** BOTÓN "Ver evento" **/}
         <TouchableOpacity style={styles.viewButton} onPress={onPress}>
           <Text style={styles.viewButtonText}>Ver evento</Text>
         </TouchableOpacity>
@@ -111,8 +97,15 @@ export default function EventsListScreen({ navigation }) {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [profileError, setProfileError] = useState(false);
+  const [activeTab, setActiveTab] = useState("Proximos");
 
-  const [activeTab, setActiveTab] = useState("Proximos"); // "Proximos" | "Pasados"
+  const { width } = useWindowDimensions();
+  const isDesktop = width > 700;
+  const [isMenuOpen, setIsMenuOpen] = useState(isDesktop);
+
+  useEffect(() => {
+    setIsMenuOpen(isDesktop);
+  }, [isDesktop]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -150,18 +143,18 @@ export default function EventsListScreen({ navigation }) {
 
   if (loading) {
     return (
-      <View style={styles.centered}>
+      <SafeAreaView style={styles.centered}>
         <ActivityIndicator size="large" color="#007AFF" />
-      </View>
+      </SafeAreaView>
     );
   }
 
   if (profileError || !profile) {
     return (
-      <View style={styles.centered}>
+      <SafeAreaView style={styles.centered}>
         <Text style={styles.errorText}>
-          Hubo un problema al cargar tu perfil.{"\n"}Por favor, vuelve a iniciar
-          sesión.
+          Hubo un problema al cargar tu perfil.{"\n"}
+          Por favor, vuelve a iniciar sesión.
         </Text>
         <TouchableOpacity
           style={styles.logoutButton}
@@ -172,7 +165,7 @@ export default function EventsListScreen({ navigation }) {
         >
           <Text style={styles.logoutText}>Ir a Login</Text>
         </TouchableOpacity>
-      </View>
+      </SafeAreaView>
     );
   }
 
@@ -181,164 +174,291 @@ export default function EventsListScreen({ navigation }) {
   const pasados = events.filter((e) => e.is_past);
 
   return (
-    <View style={styles.screenContainer}>
-      {/** ─────── Columna Izquierda: Perfil + Menú ─────── **/}
-      <View style={styles.profileColumn}>
-        <View style={styles.profileCard}>
-          <Image
-            source={{
-              uri:
-                profile.avatar_url ||
-                `https://ui-avatars.com/api/?name=${encodeURIComponent(
-                  profile.first_name + " " + profile.last_name
-                )}&background=ddd&color=333&size=128`,
-            }}
-            style={styles.avatar}
-          />
-          <Text style={styles.profileName}>
-            {profile.first_name} {profile.last_name}
-          </Text>
-          <Text style={styles.profileUsername}>@{profile.username}</Text>
-        </View>
+    <SafeAreaView style={styles.safeContainer}>
+      <View style={styles.screenContainer}>
+        {/** ── HEADER SUPERIOR SOLO EN MÓVIL ── **/}
+        {!isDesktop && (
+          <View style={styles.mobileHeader}>
+            <TouchableOpacity onPress={() => setIsMenuOpen(true)}>
+              <Ionicons name="menu-outline" size={32} color="#333" />
+            </TouchableOpacity>
+            <Text style={styles.mobileHeaderTitle}>Mis Eventos</Text>
+            {/* Placeholder para centrar el título */}
+            <View style={{ width: 32 }} />
+          </View>
+        )}
 
-        {/** Botones de menú **/}
-        <View style={styles.menuContainer}>
-          <TouchableOpacity
-            style={styles.menuItem}
-            onPress={() => navigation.navigate("Home")}
-          >
-            <Ionicons name="home-outline" size={24} color="#333" />
-            <Text style={styles.menuText}>Inicio</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.menuItem}>
-            <Ionicons name="search-outline" size={24} color="#333" />
-            <Text style={styles.menuText}>Explorar</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.menuItem}
-            onPress={() => navigation.navigate("CreateEvent")}
-          >
-            <Ionicons name="add-circle-outline" size={24} color="#333" />
-            <Text style={styles.menuText}>Crear</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.menuItem}>
-            <Ionicons name="mail-outline" size={24} color="#333" />
-            <Text style={styles.menuText}>Bandeja de entrada</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.menuItem, styles.menuItemActive]}
-            onPress={() => navigation.navigate("MyEvents")}
-          >
-            <Ionicons name="calendar-outline" size={24} color="#007AFF" />
-            <Text style={[styles.menuText, styles.menuTextActive]}>
-              Mis eventos
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+        {/** ── SIDEBAR ── **/}
+        {isDesktop ? (
+          <View style={styles.profileColumn}>
+            <View style={styles.profileCard}>
+              <Image
+                source={{
+                  uri:
+                    profile.avatar_url ||
+                    `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                      profile.first_name + " " + profile.last_name
+                    )}&background=ddd&color=333&size=128`,
+                }}
+                style={styles.avatar}
+              />
+              <Text style={styles.profileName}>
+                {profile.first_name} {profile.last_name}
+              </Text>
+              <Text style={styles.profileUsername}>@{profile.username}</Text>
+            </View>
 
-      {/** ─────── Columna Derecha: Pestañas de Eventos ─────── **/}
-      <View style={styles.eventsColumn}>
-        {/** Pestañas: “Próximos” y “Pasados” **/}
-        <View style={styles.tabsContainer}>
-          <TouchableOpacity
-            style={[
-              styles.tabItem,
-              activeTab === "Proximos" && styles.tabItemActive,
-            ]}
-            onPress={() => setActiveTab("Proximos")}
+            {/** Botones de menú **/}
+            <View style={styles.menuContainer}>
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={() => navigation.navigate("Home")}
+              >
+                <Ionicons name="home-outline" size={24} color="#333" />
+                <Text style={styles.menuText}>Inicio</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.menuItem}>
+                <Ionicons name="search-outline" size={24} color="#333" />
+                <Text style={styles.menuText}>Explorar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={() => navigation.navigate("CreateEvent")}
+              >
+                <Ionicons name="add-circle-outline" size={24} color="#333" />
+                <Text style={styles.menuText}>Crear</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.menuItem}>
+                <Ionicons name="mail-outline" size={24} color="#333" />
+                <Text style={styles.menuText}>Bandeja de entrada</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.menuItem, styles.menuItemActive]}
+                onPress={() => navigation.navigate("MyEvents")}
+              >
+                <Ionicons name="calendar-outline" size={24} color="#007AFF" />
+                <Text style={[styles.menuText, styles.menuTextActive]}>
+                  Mis eventos
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ) : (
+          <Modal
+            visible={isMenuOpen}
+            transparent={true}
+            animationType="none"
+            onRequestClose={() => setIsMenuOpen(false)}
           >
-            <Text
+            <TouchableOpacity
+              style={styles.overlayBackground}
+              activeOpacity={1}
+              onPress={() => setIsMenuOpen(false)}
+            />
+            <View
               style={[
-                styles.tabText,
-                activeTab === "Proximos" && styles.tabTextActive,
+                styles.modalMenu,
+                isMenuOpen ? styles.modalMenuOpen : styles.modalMenuClosed,
               ]}
             >
-              Próximos
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
+              <SafeAreaView style={styles.modalMenuContent}>
+                <View style={styles.profileCard}>
+                  <Image
+                    source={{
+                      uri:
+                        profile.avatar_url ||
+                        `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                          profile.first_name + " " + profile.last_name
+                        )}&background=ddd&color=333&size=128`,
+                    }}
+                    style={styles.avatar}
+                  />
+                  <Text style={styles.profileName}>
+                    {profile.first_name} {profile.last_name}
+                  </Text>
+                  <Text style={styles.profileUsername}>
+                    @{profile.username}
+                  </Text>
+                </View>
+                <View style={styles.menuContainer}>
+                  <TouchableOpacity
+                    style={styles.menuItem}
+                    onPress={() => {
+                      setIsMenuOpen(false);
+                      navigation.navigate("Home");
+                    }}
+                  >
+                    <Ionicons name="home-outline" size={24} color="#333" />
+                    <Text style={styles.menuText}>Inicio</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.menuItem}>
+                    <Ionicons name="search-outline" size={24} color="#333" />
+                    <Text style={styles.menuText}>Explorar</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.menuItem}
+                    onPress={() => {
+                      setIsMenuOpen(false);
+                      navigation.navigate("CreateEvent");
+                    }}
+                  >
+                    <Ionicons
+                      name="add-circle-outline"
+                      size={24}
+                      color="#333"
+                    />
+                    <Text style={styles.menuText}>Crear</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.menuItem}>
+                    <Ionicons name="mail-outline" size={24} color="#333" />
+                    <Text style={styles.menuText}>Bandeja de entrada</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.menuItem, styles.menuItemActive]}
+                    onPress={() => {
+                      setIsMenuOpen(false);
+                      navigation.navigate("MyEvents");
+                    }}
+                  >
+                    <Ionicons
+                      name="calendar-outline"
+                      size={24}
+                      color="#007AFF"
+                    />
+                    <Text style={[styles.menuText, styles.menuTextActive]}>
+                      Mis eventos
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </SafeAreaView>
+            </View>
+          </Modal>
+        )}
+
+        {/** ── CONTENIDO PRINCIPAL: pestañas y tarjetas de eventos ── **/}
+        <View style={styles.eventsColumn}>
+          {/** Pestañas: "Próximos" y "Pasados" **/}
+          <View
             style={[
-              styles.tabItem,
-              activeTab === "Pasados" && styles.tabItemActive,
+              styles.tabsContainer,
+              !isDesktop && styles.tabsContainerMobile,
             ]}
-            onPress={() => setActiveTab("Pasados")}
           >
-            <Text
+            <TouchableOpacity
               style={[
-                styles.tabText,
-                activeTab === "Pasados" && styles.tabTextActive,
+                styles.tabItem,
+                activeTab === "Proximos" && styles.tabItemActive,
               ]}
+              onPress={() => setActiveTab("Proximos")}
             >
-              Pasados
-            </Text>
-          </TouchableOpacity>
+              <Text
+                style={[
+                  styles.tabText,
+                  activeTab === "Proximos" && styles.tabTextActive,
+                ]}
+              >
+                Próximos
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.tabItem,
+                activeTab === "Pasados" && styles.tabItemActive,
+              ]}
+              onPress={() => setActiveTab("Pasados")}
+            >
+              <Text
+                style={[
+                  styles.tabText,
+                  activeTab === "Pasados" && styles.tabTextActive,
+                ]}
+              >
+                Pasados
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/** Contenido de la pestaña activa **/}
+          <ScrollView
+            style={styles.scrollContainer}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+          >
+            {/** PESTAÑA "Pasados" **/}
+            {activeTab === "Pasados" && (
+              <View style={styles.sectionContainer}>
+                <Text style={styles.sectionHeader}>Eventos pasados</Text>
+                {pasados.length > 0 ? (
+                  pasados.map((e) => (
+                    <EventCard
+                      key={e.id.toString()}
+                      event={e}
+                      onPress={() =>
+                        navigation.navigate("EventDetail", {
+                          event: e,
+                        })
+                      }
+                    />
+                  ))
+                ) : (
+                  <Text style={styles.noEventsText}>
+                    No hay eventos en esta sección
+                  </Text>
+                )}
+              </View>
+            )}
+
+            {/** PESTAÑA "Próximos" **/}
+            {activeTab === "Proximos" && (
+              <View style={styles.sectionContainer}>
+                <Text style={styles.sectionHeader}>Próximos eventos</Text>
+                {proximos.length > 0 ? (
+                  proximos.map((e) => (
+                    <EventCard
+                      key={e.id.toString()}
+                      event={e}
+                      onPress={() =>
+                        navigation.navigate("EventDetail", {
+                          event: e,
+                        })
+                      }
+                    />
+                  ))
+                ) : (
+                  <Text style={styles.noEventsText}>
+                    No hay eventos en esta sección
+                  </Text>
+                )}
+              </View>
+            )}
+          </ScrollView>
+
+          {/** Botón flotante para crear evento (solo en móvil) **/}
+          {!isDesktop && (
+            <TouchableOpacity
+              style={styles.fab}
+              onPress={() => navigation.navigate("CreateEvent")}
+            >
+              <Ionicons name="add" size={28} color="#fff" />
+            </TouchableOpacity>
+          )}
         </View>
-
-        {/** Contenido de la pestaña activa **/}
-        <ScrollView contentContainerStyle={{ paddingBottom: 80 }}>
-          {/** PESTAÑA “Pasados” **/}
-          {activeTab === "Pasados" && (
-            <View style={styles.sectionContainer}>
-              <Text style={styles.sectionHeader}>Eventos pasados</Text>
-              {pasados.length > 0 ? (
-                pasados.map((e) => (
-                  <EventCard
-                    key={e.id.toString()}
-                    event={e}
-                    onPress={() =>
-                      navigation.navigate("EventDetail", { event: e })
-                    }
-                  />
-                ))
-              ) : (
-                <Text style={styles.noEventsText}>
-                  No hay eventos en esta sección
-                </Text>
-              )}
-            </View>
-          )}
-
-          {/** PESTAÑA “Próximos” **/}
-          {activeTab === "Proximos" && (
-            <View style={styles.sectionContainer}>
-              <Text style={styles.sectionHeader}>Próximos eventos</Text>
-              {proximos.length > 0 ? (
-                proximos.map((e) => (
-                  <EventCard
-                    key={e.id.toString()}
-                    event={e}
-                    onPress={() =>
-                      navigation.navigate("EventDetail", { event: e })
-                    }
-                  />
-                ))
-              ) : (
-                <Text style={styles.noEventsText}>
-                  No hay eventos en esta sección
-                </Text>
-              )}
-            </View>
-          )}
-        </ScrollView>
-
-        {/** Botón flotante para crear evento **/}
-        <TouchableOpacity
-          style={styles.fab}
-          onPress={() => navigation.navigate("CreateEvent")}
-        >
-          <Ionicons name="add" size={28} color="#fff" />
-        </TouchableOpacity>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  // ─────────── Safe Area Container ───────────
+  safeContainer: {
+    flex: 1,
+    backgroundColor: "#F7F9FC",
+  },
+
   // ─────────── Pantalla principal ───────────
   screenContainer: {
     flex: 1,
-    flexDirection: width > 700 ? "row" : "column",
+    flexDirection: "row",
     backgroundColor: "#F7F9FC",
   },
   centered: {
@@ -354,26 +474,50 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
 
-  // ───────── Columna Izquierda: Perfil + Menú ─────────
-  profileColumn: {
-    width: width > 700 ? PROFILE_WIDTH : "100%",
-    paddingTop: CARD_MARGIN / 2,
-    paddingBottom: CARD_MARGIN / 2,
-    paddingHorizontal: CARD_MARGIN / 2,
-    backgroundColor: "#FFFFFF",
+  // ── HEADER EN MÓVIL ──
+  mobileHeader: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 56,
+    backgroundColor: "#fff",
+    flexDirection: "row",
+    alignItems: "center",
     justifyContent: "space-between",
-    height: "100%",
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#ddd",
+    zIndex: 10,
+    elevation: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  mobileHeaderTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#333",
+  },
+
+  // ── SIDEBAR (Perfil + Menú) ──
+  profileColumn: {
+    width: 240, // ancho fijo en escritorio
+    backgroundColor: "#FFFFFF",
     borderRightWidth: 1,
     borderRightColor: "#E5E7EB",
   },
   profileCard: {
     alignItems: "center",
-    marginBottom: 24,
+    paddingVertical: 24,
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
   },
   avatar: {
-    width: AVATAR_SIZE,
-    height: AVATAR_SIZE,
-    borderRadius: AVATAR_SIZE / 2,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     borderWidth: 2,
     borderColor: "#007AFF",
     backgroundColor: "#EEE",
@@ -383,27 +527,22 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "700",
     color: "#222",
-    marginBottom: 2,
     textAlign: "center",
+    marginBottom: 4,
   },
   profileUsername: {
     fontSize: 14,
     color: "#555",
-    marginBottom: 12,
     textAlign: "center",
   },
-
   menuContainer: {
-    flex: 1,
-    justifyContent: "flex-start",
+    paddingTop: 16,
   },
   menuItem: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-    borderRadius: 8,
-    marginBottom: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
   },
   menuItemActive: {
     backgroundColor: "#E5F1FF",
@@ -418,114 +557,175 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
 
-  // ───────── Columna Derecha: Pestañas de Eventos ─────────
+  // ── OVERLAY DE MENÚ EN MÓVIL ──
+  overlayBackground: {
+    position: "absolute",
+    top: 0,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    zIndex: 100,
+  },
+  modalMenu: {
+    position: "absolute",
+    top: 0,
+    bottom: 0,
+    left: 0,
+    width: 280,
+    backgroundColor: "#fff",
+    borderRightWidth: 1,
+    borderRightColor: "#ddd",
+    zIndex: 101,
+    elevation: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 2, height: 0 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+  },
+  modalMenuContent: {
+    flex: 1,
+  },
+
+  // ── CONTENIDO PRINCIPAL (Eventos) ──
   eventsColumn: {
     flex: 1,
-    paddingHorizontal: CARD_MARGIN / 2,
     backgroundColor: "#F7F9FC",
   },
   tabsContainer: {
     flexDirection: "row",
-    marginTop: CARD_MARGIN / 2,
-    marginBottom: CARD_MARGIN / 2,
+    backgroundColor: "#fff",
+    borderBottomWidth: 1,
+    borderBottomColor: "#E5E7EB",
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    zIndex: 5,
+  },
+  tabsContainerMobile: {
+    marginTop: 56, // Height of mobile header - only applied on mobile
   },
   tabItem: {
     flex: 1,
-    paddingVertical: 12,
+    paddingVertical: 16,
     alignItems: "center",
-    borderBottomWidth: 2,
+    borderBottomWidth: 3,
     borderBottomColor: "transparent",
+    minHeight: 50,
   },
   tabItemActive: {
     borderBottomColor: "#007AFF",
   },
   tabText: {
     fontSize: 16,
-    color: "#555",
+    color: "#6B7280",
+    fontWeight: "500",
+    textAlign: "center",
   },
   tabTextActive: {
     color: "#007AFF",
     fontWeight: "700",
   },
-
-  // ───────── Sección de eventos ─────────
+  scrollContainer: {
+    flex: 1,
+    marginTop: 0,
+  },
+  scrollContent: {
+    paddingBottom: 100, // Extra space for FAB
+  },
   sectionContainer: {
-    marginBottom: 24,
-    paddingHorizontal: CARD_MARGIN / 2,
+    paddingHorizontal: 16,
+    paddingTop: 20,
   },
   sectionHeader: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: "700",
     color: "#1F2937",
-    marginBottom: 8,
+    marginBottom: 16,
   },
   noEventsText: {
-    fontSize: 14,
-    color: "#666",
+    fontSize: 16,
+    color: "#6B7280",
     textAlign: "center",
-    marginVertical: 8,
+    marginVertical: 32,
+    fontStyle: "italic",
   },
 
-  // ───────── Tarjetas de evento ─────────
+  // ── TARJETA DE EVENTO ──
   cardContainer: {
-    marginBottom: 12,
+    marginBottom: 16,
   },
   card: {
     backgroundColor: "#FFFFFF",
-    borderRadius: 8,
-    padding: 16,
+    borderRadius: 12,
+    padding: 20,
     width: "100%",
     alignSelf: "center",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: "#F3F4F6",
   },
   cardPast: {
-    opacity: 0.6,
+    opacity: 0.7,
+    backgroundColor: "#F9FAFB",
   },
   cardHover: {
     backgroundColor: "#F0F9FF",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
-    shadowRadius: 6,
+    shadowRadius: 12,
     elevation: 6,
+    transform: [{ scale: 1.02 }],
   },
   cardTitle: {
     fontSize: 20,
     fontWeight: "700",
-    color: "#111",
-    marginBottom: 6,
+    color: "#111827",
+    marginBottom: 8,
+    lineHeight: 28,
   },
   cardDate: {
     fontSize: 14,
-    color: "#555",
-    marginBottom: 4,
+    color: "#6B7280",
+    marginBottom: 6,
+    fontWeight: "500",
   },
   cardLocation: {
     fontSize: 14,
-    color: "#555",
-    marginBottom: 8,
+    color: "#6B7280",
+    marginBottom: 12,
+    fontWeight: "500",
   },
   cardDesc: {
     fontSize: 15,
-    color: "rgba(0,0,0,0.6)",
-    marginBottom: 8,
+    color: "#4B5563",
+    marginBottom: 12,
+    lineHeight: 22,
   },
   pastLabel: {
     fontSize: 12,
-    color: "#A00",
+    color: "#DC2626",
     fontWeight: "600",
-    marginBottom: 8,
+    marginBottom: 12,
+    textTransform: "uppercase",
   },
   viewButton: {
-    marginTop: 8,
     alignSelf: "flex-start",
     backgroundColor: "#007AFF",
-    borderRadius: 4,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    shadowColor: "#007AFF",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 2,
   },
   viewButtonText: {
     color: "#FFFFFF",
@@ -533,34 +733,39 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 
-  // ───────── Botón flotante (“+”) ─────────
+  // ── FAB (solo en móvil) ──
   fab: {
     position: "absolute",
-    right: 16,
-    bottom: 16,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    right: 20,
+    bottom: 20,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     backgroundColor: "#007AFF",
     justifyContent: "center",
     alignItems: "center",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
+    shadowRadius: 8,
+    elevation: 8,
   },
 
-  // ───────── Botón “Ir a Login” (cuando hay error) ─────────
+  // ── Botón "Ir a Login"  ──
   logoutButton: {
-    backgroundColor: "#D1D5DB",
-    borderRadius: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
+    backgroundColor: "#E5E7EB",
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   logoutText: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#000",
+    color: "#374151",
   },
 });

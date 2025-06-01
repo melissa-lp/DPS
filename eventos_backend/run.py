@@ -1,12 +1,14 @@
 # run.py
 
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 from flask_jwt_extended import (
     JWTManager, create_access_token,
     jwt_required, get_jwt_identity
 )
 
 import logging
+from sqlalchemy import text
 from datetime import datetime, timezone
 
 error_logger = logging.getLogger('error_logger')
@@ -25,6 +27,8 @@ from app.models     import User, LicenseType, Event, RSVP, Comment
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
+    
+    CORS(app, resources={r"/*": {"origins": "*"}})
 
     cors.init_app(app)
     db.init_app(app)
@@ -198,6 +202,28 @@ def create_app():
                 "license_code": e.license_code
             } for e in events
         ]), 200
+        
+    @app.route('/license-types', methods=['GET'])
+    def get_license_types():
+        """Get all available Creative Commons license types"""
+        try:
+            # Query your license_types table
+            query = "SELECT code, description FROM license_types ORDER BY code"
+            cursor = db.session.execute(text(query))
+            licenses = cursor.fetchall()
+            
+            result = []
+            for license in licenses:
+                result.append({
+                    "code": license[0],
+                    "description": license[1]
+                })
+            
+            return jsonify(result), 200
+            
+        except Exception as ex:
+            error_logger.error(f"Error en /license-types: {str(ex)}", exc_info=True)
+            return jsonify(error="Error al obtener tipos de licencia"), 500
 
 
     @app.route('/stats', methods=['GET'])

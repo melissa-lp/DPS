@@ -1,6 +1,6 @@
 // eventos_frontend/src/screens/CreateEventScreen.js
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -11,6 +11,8 @@ import {
   ScrollView,
   Dimensions,
   Platform,
+  Modal,
+  ActivityIndicator,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import client from "../api/client";
@@ -21,18 +23,51 @@ if (Platform.OS !== "web") {
   DateTimePicker = require("@react-native-community/datetimepicker").default;
 }
 
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 export default function CreateEventScreen({ navigation }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [eventDate, setEventDate] = useState(null);
-  const [manualDate, setManualDate] = useState(""); // Fallback para web
   const [location, setLocation] = useState("");
   const [licenseCode, setLicenseCode] = useState("CC-BY");
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showLicensePicker, setShowLicensePicker] = useState(false);
+  const [licenseOptions, setLicenseOptions] = useState([]);
+  const [loadingLicenses, setLoadingLicenses] = useState(true);
+  const [webDate, setWebDate] = useState("");
+  const [webTime, setWebTime] = useState("");
 
-  // Cuando el usuario elige fecha/hora en iOS/Android:
+  const isSmallScreen = SCREEN_WIDTH < 768;
+  const isTablet = SCREEN_WIDTH >= 768 && SCREEN_WIDTH < 1024;
+
+  useEffect(() => {
+    fetchLicenseTypes();
+  }, []);
+
+  const fetchLicenseTypes = async () => {
+    try {
+      setLoadingLicenses(true);
+      const response = await client.get("/license-types");
+      setLicenseOptions(response.data);
+
+      if (response.data.length > 0 && !licenseCode) {
+        setLicenseCode(response.data[0].code);
+      }
+    } catch (error) {
+      console.log("Error al cargar tipos de licencia:", error);
+      Alert.alert(
+        "Advertencia",
+        "No se pudieron cargar los tipos de licencia. Se usarán valores predeterminados."
+      );
+      setLicenseOptions([
+        { code: "CC-BY", description: "Creative Commons Attribution" },
+      ]);
+    } finally {
+      setLoadingLicenses(false);
+    }
+  };
+
   const onChangeDate = (event, selectedDate) => {
     setShowDatePicker(false);
     if (selectedDate) {
@@ -40,7 +75,6 @@ export default function CreateEventScreen({ navigation }) {
     }
   };
 
-  // Convierte un Date a "YYYY-MM-DDThh:mm:ss"
   const formatInputDate = (date) => {
     if (!date) return "";
     const yyyy = date.getFullYear();
@@ -52,10 +86,29 @@ export default function CreateEventScreen({ navigation }) {
     return `${yyyy}-${mm}-${dd}T${hh}:${mi}:${ss}`;
   };
 
+  const combineWebDateTime = () => {
+    if (!webDate || !webTime) return "";
+    return `${webDate}T${webTime}:00`;
+  };
+
+  const getTodayDate = () => {
+    const today = new Date();
+    return today.toISOString().split("T")[0];
+  };
+
+  const getCurrentTime = () => {
+    const now = new Date();
+    return now.toTimeString().slice(0, 5);
+  };
+
   const submit = async () => {
-    // En web uso manualDate; en móvil uso eventDate
-    const dateValue =
-      Platform.OS === "web" ? manualDate.trim() : formatInputDate(eventDate);
+    let dateValue;
+
+    if (Platform.OS === "web") {
+      dateValue = combineWebDateTime();
+    } else {
+      dateValue = formatInputDate(eventDate);
+    }
 
     if (!title.trim() || !dateValue || !licenseCode.trim()) {
       Alert.alert("Error", "Título, fecha y licencia son obligatorios");
@@ -84,11 +137,11 @@ export default function CreateEventScreen({ navigation }) {
       });
 
       Alert.alert("Éxito", "Evento creado correctamente");
-      // Limpiar campos
       setTitle("");
       setDescription("");
       setEventDate(null);
-      setManualDate("");
+      setWebDate("");
+      setWebTime("");
       setLocation("");
       setLicenseCode("CC-BY");
       navigation.navigate("EventsList");
@@ -101,13 +154,197 @@ export default function CreateEventScreen({ navigation }) {
     }
   };
 
+  const renderLicensePicker = () => {
+    const selectedLicense = licenseOptions.find((l) => l.code === licenseCode);
+
+    if (loadingLicenses) {
+      return (
+        <View style={styles.inputGroup}>
+          <Text style={styles.inputLabel}>Licencia Creative Commons</Text>
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="small" color="#666666" />
+            <Text style={styles.loadingText}>Cargando licencias...</Text>
+          </View>
+        </View>
+      );
+    }
+
+    return (
+      <View style={styles.inputGroup}>
+        <Text style={styles.inputLabel}>Licencia Creative Commons</Text>
+        <TouchableOpacity
+          style={styles.pickerButton}
+          onPress={() => setShowLicensePicker(true)}
+        >
+          <Text style={styles.pickerButtonText}>
+            {selectedLicense
+              ? selectedLicense.description
+              : "Seleccionar licencia"}
+          </Text>
+          <Text style={styles.pickerArrow}>▼</Text>
+        </TouchableOpacity>
+
+        <Modal
+          visible={showLicensePicker}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => setShowLicensePicker(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View
+              style={[
+                styles.modalContent,
+                isSmallScreen && styles.modalContentMobile,
+              ]}
+            >
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Seleccionar Licencia</Text>
+                <TouchableOpacity
+                  style={styles.modalCloseButton}
+                  onPress={() => setShowLicensePicker(false)}
+                >
+                  <Text style={styles.modalCloseText}>✕</Text>
+                </TouchableOpacity>
+              </View>
+              <ScrollView style={styles.modalScrollView}>
+                {licenseOptions.map((license) => (
+                  <TouchableOpacity
+                    key={license.code}
+                    style={[
+                      styles.licenseOption,
+                      licenseCode === license.code &&
+                        styles.selectedLicenseOption,
+                    ]}
+                    onPress={() => {
+                      setLicenseCode(license.code);
+                      setShowLicensePicker(false);
+                    }}
+                  >
+                    <Text
+                      style={[
+                        styles.licenseOptionText,
+                        licenseCode === license.code &&
+                          styles.selectedLicenseText,
+                      ]}
+                    >
+                      {license.description}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
+      </View>
+    );
+  };
+
+  const renderDatePicker = () => {
+    if (Platform.OS === "web") {
+      return (
+        <View style={styles.inputGroup}>
+          <Text style={styles.inputLabel}>Fecha y Hora del Evento</Text>
+
+          <View
+            style={[styles.dateTimeRow, isSmallScreen && styles.dateTimeColumn]}
+          >
+            {/* Input de fecha nativo para web */}
+            <View style={styles.dateInputContainer}>
+              <Text style={styles.dateTimeLabel}>📅 Fecha</Text>
+              <input
+                type="date"
+                value={webDate}
+                onChange={(e) => setWebDate(e.target.value)}
+                min={getTodayDate()}
+                style={styles.webDateInput}
+              />
+            </View>
+
+            {/* Input de hora nativo para web */}
+            <View style={styles.timeInputContainer}>
+              <Text style={styles.dateTimeLabel}>🕐 Hora</Text>
+              <input
+                type="time"
+                value={webTime}
+                onChange={(e) => setWebTime(e.target.value)}
+                style={styles.webTimeInput}
+              />
+            </View>
+          </View>
+
+          {/* Vista previa mejorada */}
+          {(webDate || webTime) && (
+            <View style={styles.datePreview}>
+              <View style={styles.datePreviewHeader}>
+                <Text style={styles.datePreviewIcon}>📅</Text>
+                <Text style={styles.datePreviewLabel}>Fecha del evento</Text>
+              </View>
+              <Text style={styles.datePreviewText}>
+                {webDate
+                  ? new Date(webDate).toLocaleDateString("es-ES", {
+                      weekday: "long",
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                    })
+                  : "Sin fecha seleccionada"}
+                {webTime && ` a las ${webTime}`}
+              </Text>
+            </View>
+          )}
+        </View>
+      );
+    } else {
+      return (
+        <View style={styles.inputGroup}>
+          <Text style={styles.inputLabel}>Fecha y Hora del Evento</Text>
+          <TouchableOpacity
+            style={styles.pickerButton}
+            onPress={() => setShowDatePicker(true)}
+          >
+            <Text style={styles.pickerButtonText}>
+              {eventDate
+                ? formatInputDate(eventDate).replace("T", " a las ") + " hrs"
+                : "Seleccionar fecha y hora"}
+            </Text>
+            <Text style={styles.pickerArrow}>📅</Text>
+          </TouchableOpacity>
+          {showDatePicker && (
+            <DateTimePicker
+              value={eventDate || new Date()}
+              mode="datetime"
+              display={Platform.OS === "ios" ? "spinner" : "default"}
+              onChange={onChangeDate}
+              minimumDate={new Date()}
+            />
+          )}
+        </View>
+      );
+    }
+  };
+
+  const getContainerWidth = () => {
+    if (isSmallScreen) return "100%";
+    if (isTablet) return "80%";
+    return "60%";
+  };
+
+  const getButtonLayout = () => {
+    return isSmallScreen ? styles.buttonColumn : styles.buttonsRow;
+  };
+
   return (
     <ScrollView contentContainerStyle={styles.outerScroll}>
-      <View style={styles.innerContainer}>
-        {/** ───────── TÍTULO PRINCIPAL ───────── */}
-        <Text style={styles.headerTitle}>Crear Evento</Text>
+      <View style={[styles.innerContainer, { width: getContainerWidth() }]}>
+        <Text
+          style={[
+            styles.headerTitle,
+            isSmallScreen && styles.headerTitleMobile,
+          ]}
+        >
+          Crear Evento
+        </Text>
 
-        {/** ───────── CAMPO: TÍTULO ───────── */}
         <View style={styles.inputGroup}>
           <Text style={styles.inputLabel}>Título</Text>
           <TextInput
@@ -115,10 +352,10 @@ export default function CreateEventScreen({ navigation }) {
             onChangeText={setTitle}
             style={styles.input}
             autoCapitalize="sentences"
+            placeholder="Ingresa el título del evento"
           />
         </View>
 
-        {/** ───────── CAMPO: DESCRIPCIÓN ───────── */}
         <View style={styles.inputGroup}>
           <Text style={styles.inputLabel}>Descripción (opcional)</Text>
           <TextInput
@@ -126,79 +363,37 @@ export default function CreateEventScreen({ navigation }) {
             onChangeText={setDescription}
             style={[styles.input, styles.multilineInput]}
             multiline
-            numberOfLines={4}
+            numberOfLines={isSmallScreen ? 3 : 4}
+            placeholder="Describe tu evento..."
           />
         </View>
 
-        {/** ───────── CAMPO: FECHA ───────── */}
-        <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>Fecha del Evento</Text>
+        {renderDatePicker()}
 
-          {Platform.OS === "web" ? (
-            // En web: el usuario escribe manualmente "YYYY-MM-DDThh:mm:ss"
-            <TextInput
-              value={manualDate}
-              onChangeText={setManualDate}
-              placeholder="2025-06-15T18:30:00"
-              style={styles.input}
-            />
-          ) : (
-            // En Android/iOS: abrimos el DateTimePicker nativo
-            <>
-              <TouchableOpacity
-                style={styles.datePickerButton}
-                onPress={() => setShowDatePicker(true)}
-              >
-                <Text style={styles.datePickerText}>
-                  {eventDate
-                    ? formatInputDate(eventDate).replace("T", " ")
-                    : "Seleccionar fecha y hora"}
-                </Text>
-              </TouchableOpacity>
-              {showDatePicker && (
-                <DateTimePicker
-                  value={eventDate || new Date()}
-                  mode="datetime"
-                  display={Platform.OS === "ios" ? "spinner" : "default"}
-                  onChange={onChangeDate}
-                  minimumDate={new Date()}
-                />
-              )}
-            </>
-          )}
-        </View>
-
-        {/** ───────── CAMPO: UBICACIÓN ───────── */}
         <View style={styles.inputGroup}>
           <Text style={styles.inputLabel}>Ubicación (opcional)</Text>
           <TextInput
             value={location}
             onChangeText={setLocation}
             style={styles.input}
+            placeholder="¿Dónde será el evento?"
           />
         </View>
 
-        {/** ───────── CAMPO: LICENCIA ───────── */}
-        <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>Código de Licencia</Text>
-          <TextInput
-            value={licenseCode}
-            onChangeText={setLicenseCode}
-            style={styles.input}
-            autoCapitalize="characters"
-          />
-        </View>
+        {renderLicensePicker()}
 
-        {/** ───────── BOTONES ───────── */}
-        <View style={styles.buttonsRow}>
-          <TouchableOpacity style={styles.smallButton} onPress={submit}>
-            <Text style={styles.smallButtonText}>Crear Evento</Text>
+        <View style={getButtonLayout()}>
+          <TouchableOpacity
+            style={[styles.button, styles.primaryButton]}
+            onPress={submit}
+          >
+            <Text style={styles.buttonText}>Crear Evento</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.smallButton, { backgroundColor: "#E53935" }]}
+            style={[styles.button, styles.secondaryButton]}
             onPress={() => navigation.goBack()}
           >
-            <Text style={styles.smallButtonText}>Cancelar</Text>
+            <Text style={styles.buttonText}>Cancelar</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -211,35 +406,40 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     backgroundColor: "#ffffff",
     paddingVertical: 16,
+    minHeight: SCREEN_HEIGHT,
   },
   innerContainer: {
-    width: SCREEN_WIDTH > 700 ? "70%" : "100%",
     alignSelf: "center",
     paddingHorizontal: 16,
+    maxWidth: 800,
   },
   headerTitle: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: "700",
     color: "#333333",
     textAlign: "center",
+    marginBottom: 32,
+  },
+  headerTitleMobile: {
+    fontSize: 24,
     marginBottom: 24,
   },
   inputGroup: {
-    marginBottom: 20,
+    marginBottom: 24,
   },
   inputLabel: {
     fontSize: 16,
     fontWeight: "600",
     color: "#222222",
-    marginBottom: 6,
+    marginBottom: 8,
   },
   input: {
     width: "100%",
     borderWidth: 1,
-    borderColor: "#BBBBBB",
-    borderRadius: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
+    borderColor: "#DDDDDD",
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     fontSize: 16,
     backgroundColor: "#FAFAFA",
     color: "#222222",
@@ -248,34 +448,192 @@ const styles = StyleSheet.create({
     height: 100,
     textAlignVertical: "top",
   },
-  datePickerButton: {
+  pickerButton: {
     width: "100%",
     borderWidth: 1,
-    borderColor: "#BBBBBB",
-    borderRadius: 8,
+    borderColor: "#DDDDDD",
+    borderRadius: 12,
     paddingVertical: 12,
-    paddingHorizontal: 12,
+    paddingHorizontal: 16,
     backgroundColor: "#FAFAFA",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
-  datePickerText: {
+  pickerButtonText: {
     fontSize: 16,
     color: "#444444",
+    flex: 1,
+  },
+  pickerArrow: {
+    fontSize: 12,
+    color: "#666666",
+  },
+  dateTimeRow: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  dateTimeColumn: {
+    flexDirection: "column",
+    gap: 12,
+  },
+  dateInputContainer: {
+    flex: 1,
+    marginBottom: 8,
+  },
+  timeInputContainer: {
+    flex: 1,
+    marginBottom: 8,
+  },
+  webDateInput: {
+    width: "100%",
+    padding: "12px 16px",
+    border: "1px solid #DDDDDD",
+    borderRadius: 12,
+    fontSize: 16,
+    backgroundColor: "#FAFAFA",
+    color: "#222222",
+    fontFamily: "system-ui, -apple-system, sans-serif",
+  },
+  webTimeInput: {
+    width: "100%",
+    padding: "12px 16px",
+    border: "1px solid #DDDDDD",
+    borderRadius: 12,
+    fontSize: 16,
+    backgroundColor: "#FAFAFA",
+    color: "#222222",
+    fontFamily: "system-ui, -apple-system, sans-serif",
   },
   buttonsRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginTop: 16,
+    gap: 16,
+    marginTop: 32,
   },
-  smallButton: {
-    width: "40%",
-    backgroundColor: "#007AFF",
-    borderRadius: 6,
-    paddingVertical: 12,
+  buttonColumn: {
+    flexDirection: "column",
+    gap: 12,
+    marginTop: 32,
+  },
+  button: {
+    flex: 1,
+    borderRadius: 12,
+    paddingVertical: 16,
     alignItems: "center",
+    justifyContent: "center",
+    minHeight: 50,
   },
-  smallButtonText: {
+  primaryButton: {
+    backgroundColor: "#007AFF",
+  },
+  secondaryButton: {
+    backgroundColor: "#E53935",
+  },
+  buttonText: {
     color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "600",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalContent: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    padding: 20,
+    width: "80%",
+    maxWidth: 500,
+    maxHeight: "70%",
+  },
+  modalContentMobile: {
+    width: "90%",
+    maxHeight: "80%",
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#EEEEEE",
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#333333",
+  },
+  modalCloseButton: {
+    padding: 4,
+  },
+  modalCloseText: {
+    fontSize: 18,
+    color: "#666666",
+  },
+  modalScrollView: {
+    maxHeight: 300,
+  },
+  licenseOption: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    marginBottom: 4,
+  },
+  selectedLicenseOption: {
+    backgroundColor: "#E3F2FD",
+  },
+  licenseOptionText: {
+    fontSize: 14,
+    color: "#666666",
+  },
+  selectedLicenseText: {
+    color: "#1976D2",
+  },
+  loadingContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: "#FAFAFA",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#DDDDDD",
+  },
+  loadingText: {
+    marginLeft: 8,
+    fontSize: 16,
+    color: "#666666",
+  },
+  datePreview: {
+    marginTop: 16,
+    padding: 16,
+    backgroundColor: "#F8F9FA",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E9ECEF",
+  },
+  datePreviewHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  datePreviewIcon: {
+    fontSize: 16,
+    marginRight: 8,
+  },
+  datePreviewLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#495057",
+  },
+  datePreviewText: {
+    fontSize: 16,
+    color: "#007AFF",
+    fontWeight: "500",
+    lineHeight: 22,
   },
 });

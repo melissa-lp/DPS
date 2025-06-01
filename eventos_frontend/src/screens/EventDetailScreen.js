@@ -13,11 +13,16 @@ import {
   FlatList,
   Dimensions,
   Platform,
+  TouchableOpacity,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import client from "../api/client";
 
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
+
+// Check if device is a tablet
+const isTablet = SCREEN_WIDTH >= 768;
+const isSmallPhone = SCREEN_WIDTH < 375;
 
 function formatSpanishDateLong(date) {
   const day = date.getDate();
@@ -169,10 +174,36 @@ export default function EventDetailScreen({ route, navigation }) {
     }
   };
 
+  // Custom button component for better mobile experience
+  const CustomButton = ({ title, onPress, disabled, variant = "primary" }) => (
+    <TouchableOpacity
+      style={[
+        styles.customButton,
+        variant === "secondary" && styles.customButtonSecondary,
+        disabled && styles.customButtonDisabled,
+      ]}
+      onPress={onPress}
+      disabled={disabled}
+      activeOpacity={0.7}
+    >
+      <Text
+        style={[
+          styles.customButtonText,
+          variant === "secondary" && styles.customButtonTextSecondary,
+          disabled && styles.customButtonTextDisabled,
+        ]}
+      >
+        {title}
+      </Text>
+    </TouchableOpacity>
+  );
+
   const renderComment = ({ item }) => (
     <View style={styles.commentContainer}>
-      <Text style={styles.commentUser}>{item.username}</Text>
-      <Text style={styles.commentRating}>⭐ {item.rating}/5</Text>
+      <View style={styles.commentHeader}>
+        <Text style={styles.commentUser}>{item.username}</Text>
+        <Text style={styles.commentRating}>⭐ {item.rating}/5</Text>
+      </View>
       <Text style={styles.commentText}>{item.content}</Text>
       <Text style={styles.commentDate}>
         {new Date(item.created_at).toLocaleDateString()}
@@ -181,7 +212,10 @@ export default function EventDetailScreen({ route, navigation }) {
   );
 
   return (
-    <ScrollView contentContainerStyle={styles.outerScroll}>
+    <ScrollView
+      contentContainerStyle={styles.outerScroll}
+      showsVerticalScrollIndicator={false}
+    >
       <View style={styles.innerContainer}>
         {/** ───────── Encabezado con Título, Fecha y Ubicación ───────── */}
         <View style={styles.header}>
@@ -209,7 +243,7 @@ export default function EventDetailScreen({ route, navigation }) {
             ) : (
               <View style={styles.rsvpRow}>
                 <View style={styles.rsvpButtonWrapper}>
-                  <Button
+                  <CustomButton
                     title={
                       rsvpStatus === "accepted" ? "Asistiendo ✓" : "Asistir"
                     }
@@ -218,9 +252,9 @@ export default function EventDetailScreen({ route, navigation }) {
                   />
                 </View>
                 <View style={styles.rsvpButtonWrapper}>
-                  <Button
+                  <CustomButton
                     title="Cancelar"
-                    color="red"
+                    variant="secondary"
                     onPress={() => handleRsvp("declined")}
                     disabled={rsvpStatus !== "accepted"}
                   />
@@ -243,6 +277,7 @@ export default function EventDetailScreen({ route, navigation }) {
                   renderItem={renderComment}
                   keyExtractor={(item) => item.id.toString()}
                   scrollEnabled={false}
+                  showsVerticalScrollIndicator={false}
                 />
               ) : (
                 <Text style={styles.noCommentsText}>
@@ -261,22 +296,25 @@ export default function EventDetailScreen({ route, navigation }) {
                   style={[styles.input, styles.multilineInput]}
                   multiline
                   numberOfLines={4}
+                  textAlignVertical="top"
                 />
-                <TextInput
-                  placeholder="Calificación (1–5)"
-                  value={rating}
-                  onChangeText={setRating}
-                  keyboardType="numeric"
-                  style={[styles.input, styles.ratingInput]}
-                />
+                <View style={styles.ratingContainer}>
+                  <TextInput
+                    placeholder="Calificación (1–5)"
+                    value={rating}
+                    onChangeText={setRating}
+                    keyboardType="numeric"
+                    style={[styles.input, styles.ratingInput]}
+                    maxLength={1}
+                  />
+                </View>
                 {loadingComment ? (
                   <ActivityIndicator size="small" color="#007AFF" />
                 ) : (
                   <View style={styles.submitCommentWrapper}>
-                    <Button
+                    <CustomButton
                       title="Enviar Comentario"
                       onPress={handleSubmitComment}
-                      color="#007AFF"
                     />
                   </View>
                 )}
@@ -290,133 +328,200 @@ export default function EventDetailScreen({ route, navigation }) {
 }
 
 const styles = StyleSheet.create({
-  /**
-   * outerScroll: garantiza que el ScrollView ocupe toda la pantalla
-   */
   outerScroll: {
     flexGrow: 1,
     backgroundColor: "#ffffff",
-    paddingVertical: 16,
+    paddingVertical: isTablet ? 24 : 16,
   },
 
-  /**
-   * innerContainer: ocupa 70% del ancho en pantallas amplias y centra
-   * en pantallas pequeñas (por debajo de 700 px, usa 100%).
-   */
   innerContainer: {
-    width: SCREEN_WIDTH > 700 ? "70%" : "100%",
+    width: isTablet ? "80%" : "100%",
+    maxWidth: 600,
     alignSelf: "center",
-    paddingHorizontal: 16,
+    paddingHorizontal: isSmallPhone ? 12 : 16,
   },
 
-  /**
-   * header: fondo claro y bordes redondeados para el bloque de título
-   */
   header: {
     backgroundColor: "#e3f2fd",
-    borderRadius: 8,
-    padding: 16,
-    marginBottom: 24,
+    borderRadius: 12,
+    padding: isSmallPhone ? 12 : 16,
+    marginBottom: isTablet ? 32 : 20,
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
+
   title: {
-    fontSize: 24,
+    fontSize: isSmallPhone ? 20 : isTablet ? 28 : 24,
     fontWeight: "700",
-    marginBottom: 6,
-    color: "#333",
+    marginBottom: 8,
+    color: "#1a1a1a",
+    lineHeight: isSmallPhone ? 24 : isTablet ? 34 : 30,
   },
+
   date: {
-    fontSize: 16,
-    color: "#555",
-    marginBottom: 4,
+    fontSize: isSmallPhone ? 14 : 16,
+    color: "#4a5568",
+    marginBottom: 6,
+    fontWeight: "500",
   },
+
   location: {
-    fontSize: 16,
-    color: "#555",
+    fontSize: isSmallPhone ? 14 : 16,
+    color: "#4a5568",
+    fontWeight: "500",
   },
 
   section: {
-    marginBottom: 32,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    marginBottom: 8,
-    color: "#333",
-  },
-  descText: {
-    fontSize: 15,
-    color: "#444",
-    lineHeight: 22,
+    marginBottom: isTablet ? 32 : 24,
   },
 
-  /**
-   * rsvpRow: fila horizontal que contiene ambos botones de RSVP
-   * Cada botón ocupa un 20% del ancho de innerContainer, con espacio entre ellos.
-   */
-  rsvpRow: {
-    flexDirection: "row",
-    justifyContent: "flex-start",
-    alignItems: "center",
+  sectionTitle: {
+    fontSize: isSmallPhone ? 16 : isTablet ? 20 : 18,
+    fontWeight: "600",
+    marginBottom: 12,
+    color: "#2d3748",
   },
+
+  descText: {
+    fontSize: isSmallPhone ? 14 : 15,
+    color: "#4a5568",
+    lineHeight: isSmallPhone ? 20 : 22,
+  },
+
+  rsvpRow: {
+    flexDirection: isSmallPhone ? "column" : "row",
+    justifyContent: "flex-start",
+    alignItems: isSmallPhone ? "stretch" : "center",
+    gap: 12,
+  },
+
   rsvpButtonWrapper: {
-    width: "20%",
-    marginRight: 12,
+    width: isSmallPhone ? "100%" : isTablet ? "30%" : "40%",
+    maxWidth: 200,
+  },
+
+  // Custom button styles for better mobile experience
+  customButton: {
+    backgroundColor: "#007AFF",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: 44, // Better touch target
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+  },
+
+  customButtonSecondary: {
+    backgroundColor: "#ff3b30",
+  },
+
+  customButtonDisabled: {
+    backgroundColor: "#c7c7cc",
+    elevation: 0,
+    shadowOpacity: 0,
+  },
+
+  customButtonText: {
+    color: "#ffffff",
+    fontSize: isSmallPhone ? 14 : 16,
+    fontWeight: "600",
+  },
+
+  customButtonTextSecondary: {
+    color: "#ffffff",
+  },
+
+  customButtonTextDisabled: {
+    color: "#8e8e93",
   },
 
   input: {
     borderWidth: 1,
-    borderColor: "#bbb",
+    borderColor: "#d1d5db",
     borderRadius: 8,
-    padding: 12,
-    backgroundColor: "#fafafa",
-    fontSize: 15,
-    color: "#222",
+    padding: isSmallPhone ? 10 : 12,
+    backgroundColor: "#f9fafb",
+    fontSize: isSmallPhone ? 14 : 15,
+    color: "#1f2937",
     marginBottom: 12,
+    minHeight: 44, // Better touch target
   },
+
   multilineInput: {
-    height: 100,
+    height: isSmallPhone ? 80 : 100,
     textAlignVertical: "top",
   },
-  ratingInput: {
-    width: 120,
+
+  ratingContainer: {
+    alignItems: "flex-start",
   },
+
+  ratingInput: {
+    width: isSmallPhone ? 80 : 100,
+    textAlign: "center",
+  },
+
   submitCommentWrapper: {
-    marginTop: 12,
-    alignSelf: "flex-start",
-    width: 160,
+    marginTop: 8,
+    alignSelf: "stretch",
+    maxWidth: isTablet ? 200 : "100%",
   },
 
   commentContainer: {
-    backgroundColor: "#f5f5f5",
+    backgroundColor: "#f8f9fa",
     borderRadius: 8,
-    padding: 12,
+    padding: isSmallPhone ? 10 : 12,
     marginBottom: 12,
+    borderLeftWidth: 3,
+    borderLeftColor: "#007AFF",
   },
+
+  commentHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 6,
+  },
+
   commentUser: {
-    fontSize: 15,
+    fontSize: isSmallPhone ? 14 : 15,
     fontWeight: "700",
-    marginBottom: 4,
-    color: "#222",
+    color: "#1f2937",
+    flex: 1,
   },
+
   commentRating: {
-    fontSize: 14,
-    color: "#ffa500",
-    marginBottom: 4,
+    fontSize: isSmallPhone ? 13 : 14,
+    color: "#f59e0b",
+    fontWeight: "600",
   },
+
   commentText: {
-    fontSize: 15,
-    color: "#333",
-    marginBottom: 4,
+    fontSize: isSmallPhone ? 13 : 14,
+    color: "#4b5563",
+    marginBottom: 6,
+    lineHeight: isSmallPhone ? 18 : 20,
   },
+
   commentDate: {
-    fontSize: 13,
-    color: "#666",
+    fontSize: 12,
+    color: "#9ca3af",
     textAlign: "right",
   },
+
   noCommentsText: {
     textAlign: "center",
-    color: "#666",
-    marginVertical: 8,
-    fontSize: 15,
+    color: "#9ca3af",
+    marginVertical: 16,
+    fontSize: isSmallPhone ? 14 : 15,
+    fontStyle: "italic",
   },
 });
