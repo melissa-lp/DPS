@@ -7,6 +7,7 @@ from flask_jwt_extended import (
 )
 
 import logging
+from datetime import datetime, timezone
 
 error_logger = logging.getLogger('error_logger')
 error_logger.setLevel(logging.ERROR)
@@ -104,7 +105,6 @@ def create_app():
     @app.route('/events', methods=['GET'])
     @jwt_required()
     def list_events():
-        """Lista todos los eventos, marcando si son pasados o futuros."""
         try:
             user_id = get_jwt_identity()
             user = User.query.get(user_id)
@@ -112,25 +112,25 @@ def create_app():
                 return jsonify(error="Usuario no encontrado"), 404
 
             events = Event.query.order_by(Event.event_date.asc()).all()
-            
-            now = datetime.now(timezone.utc) 
-            
+
+            now = datetime.now(timezone.utc)
+
             result = []
             for e in events:
                 event_data = {
-                    "id": e.id,
-                    "creator_id": e.creator_id,
-                    "title": e.title,
-                    "description": e.description,
-                    "event_date": e.event_date.isoformat(),
-                    "location": e.location,
+                    "id":           e.id,
+                    "creator_id":   e.creator_id,
+                    "title":        e.title,
+                    "description":  e.description,
+                    "event_date":   e.event_date.isoformat(),
+                    "location":     e.location,
                     "license_code": e.license_code,
-                    "is_past": e.event_date < now.replace(tzinfo=None) 
+                    "is_past":      e.event_date < now.replace(tzinfo=None)
                 }
                 result.append(event_data)
-            
+
             return jsonify(result), 200
-            
+
         except Exception as ex:
             error_logger.error(f"Error en /events: {str(ex)}", exc_info=True)
             return jsonify(error="Internal server error"), 500
@@ -173,15 +173,18 @@ def create_app():
         Devuelve solo los eventos pasados a los que el usuario autenticado haya confirmado asistencia (status='accepted').
         """
         user_id = get_jwt_identity()
-        now = datetime.utcnow()
+
+        now = datetime.now(timezone.utc)
 
         rsvps = (
             RSVP.query
-            .join(Event, RSVP.event_id == Event.id)
-            .filter(RSVP.user_id == user_id, 
-                    RSVP.status == 'accepted', 
-                    Event.event_date < now)
-            .all()
+                .join(Event, RSVP.event_id == Event.id)
+                .filter(
+                    RSVP.user_id == user_id,
+                    RSVP.status == 'accepted',
+                    Event.event_date < now.replace(tzinfo=None)
+                )
+                .all()
         )
         events = [rsvp.event for rsvp in rsvps]
         return jsonify([
@@ -201,36 +204,49 @@ def create_app():
     @jwt_required()
     def stats():
         """
-        Devuelve estadísticas únicamente de los eventos ya pasados:
-        - total de RSVPs 
-        - asistencias aceptadas 
-        - calificación promedio por evento 
+        Devuelve estadísticas solo para eventos pasados, 
+        comparando event_date < UTC_TIMESTAMP() dentro de MySQL.
         """
-        now = datetime.utcnow()
-
         sql = """
             SELECT
-              event_id,
-              event_title,
-              total_rsvps,
-              accepted_count,
-              IFNULL(average_rating, 0) AS average_rating
+            event_id,
+            event_title,
+            total_rsvps,
+            accepted_count,
+            IFNULL(average_rating, 0) AS average_rating
             FROM event_stats
             WHERE event_id IN (
-                SELECT id FROM events WHERE event_date < :now
+                SELECT id
+                FROM events
+                WHERE event_date < UTC_TIMESTAMP()
             )
         """
-        result = db.session.execute(sql, {"now": now}).fetchall()
+        result = db.session.execute(sql).fetchall()
         rows = []
         for row in result:
             rows.append({
-                "event_id":       row['event_id'],
-                "event_title":    row['event_title'],
-                "total_rsvps":    int(row['total_rsvps']),
-                "accepted_count": int(row['accepted_count']),
-                "average_rating": float(row['average_rating'])
+                "event_id":       row["event_id"],
+                "event_title":    row["event_title"],
+                "total_rsvps":    int(row["total_rsvps"]),
+                "accepted_count": int(row["accepted_count"]),
+                "average_rating": float(row["average_rating"])
             })
         return jsonify(rows), 200
+    
+    @app.route('/rsvps/<int:event_id>', methods=['GET'])
+    @jwt_required()
+    def get_rsvp_status(event_id):
+        """
+        Devuelve el estado de RSVP (pending/accepted/declined) 
+        para el usuario autenticado sobre un evento dado.
+        Si no existe RSVP, devuelve { "status": null }.
+        """
+        user_id = get_jwt_identity()
+        rsvp = RSVP.query.filter_by(user_id=user_id, event_id=event_id).first()
+        if not rsvp:
+            return jsonify({"status": None}), 200
+
+        return jsonify({"status": rsvp.status}), 200
 
 
     @app.route('/rsvps/<int:event_id>', methods=['POST'])
@@ -339,6 +355,49 @@ def create_app():
                 "created_at": c.created_at.isoformat()
             } for c in comments
         ]), 200
+        
+        
+    @app.route('/history', methods=['GET'])
+    @jwt_required()
+    def history():
+      
+        now = datetime.now(timezone.utc)
+
+        past_events = (
+            Event.query
+                 .filter(Event.event_date < now.replace(tzinfo=None))
+                 .order_by(Event.event_date.desc())
+                 .all()
+        )
+
+        result = []
+        for ev in past_events:
+            # RSVPs con status='accepted'
+            accepted_rsvps = (
+                RSVP.query
+                    .join(User, RSVP.user_id == User.id)
+                    .filter(RSVP.event_id == ev.id, RSVP.status == 'accepted')
+                    .all()
+            )
+
+            # Lista de asistentes con nombre completo
+            attendees = [
+                {
+                    "user_id": rsvp.user.id,
+                    "full_name": f"{rsvp.user.first_name} {rsvp.user.last_name}",
+                    "username": rsvp.user.username
+                }
+                for rsvp in accepted_rsvps
+            ]
+
+            result.append({
+                "event_id":    ev.id,
+                "event_title": ev.title,
+                "event_date":  ev.event_date.isoformat(),
+                "attendees":   attendees
+            })
+
+        return jsonify(result), 200
 
     return app
 

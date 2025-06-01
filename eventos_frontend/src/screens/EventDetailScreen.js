@@ -19,10 +19,6 @@ import client from "../api/client";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
-/**
- * Formatea una fecha en español: "DD de MES de AAAA"
- * Ejemplo: "1 de mayo de 2025"
- */
 function formatSpanishDateLong(date) {
   const day = date.getDate();
   const monthIndex = date.getMonth();
@@ -214,7 +210,9 @@ export default function EventDetailScreen({ route, navigation }) {
               <View style={styles.rsvpRow}>
                 <View style={styles.rsvpButtonWrapper}>
                   <Button
-                    title={rsvpStatus === "accepted" ? "Asistiendo ✓" : "Asistir"}
+                    title={
+                      rsvpStatus === "accepted" ? "Asistiendo ✓" : "Asistir"
+                    }
                     onPress={() => handleRsvp("accepted")}
                     disabled={rsvpStatus === "accepted"}
                   />

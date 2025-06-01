@@ -50,8 +50,8 @@ function formatSpanishDate(date) {
  * - Muestra título, fecha (formateada), ubicación, descripción
  * - Si está en el pasado, muestra etiqueta “📌 Pasado”
  * - Botón “Ver evento” que llama a onPress
- * - Ancho al 100% del espacio interior de su contenedor
- * - Para web, habilita hover que cambia fondo y sombra
+ * - Ocupa el 100% del ancho del contenedor
+ * - En web, habilita hover que cambia fondo y sombra
  */
 function EventCard({ event, onPress }) {
   const [isHovered, setIsHovered] = useState(false);
@@ -68,7 +68,6 @@ function EventCard({ event, onPress }) {
       activeOpacity={0.9}
       onPress={onPress}
       style={styles.cardContainer}
-      // Solo en web: onMouseEnter y onMouseLeave para hover
       {...(Platform.OS === "web"
         ? {
             onMouseEnter: () => setIsHovered(true),
@@ -113,7 +112,7 @@ export default function EventsListScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [profileError, setProfileError] = useState(false);
 
-  const [activeTab, setActiveTab] = useState("Proximos"); // "Proximos" | "Pasados" | "Borradores"
+  const [activeTab, setActiveTab] = useState("Proximos"); // "Proximos" | "Pasados"
 
   useEffect(() => {
     const fetchData = async () => {
@@ -130,11 +129,11 @@ export default function EventsListScreen({ navigation }) {
         const res = await client.get("/events", {
           headers: { Authorization: `Bearer ${token}` },
         });
+        // Procesamos cada evento para determinar si ya pasó o es futuro
         const processedEvents = res.data.map((event) => ({
           ...event,
           event_date: new Date(event.event_date),
           is_past: new Date(event.event_date) < new Date(),
-          is_draft: event.status === "draft", // asume que el backend usa status="draft"
         }));
         setEvents(processedEvents);
       } catch (err) {
@@ -178,9 +177,8 @@ export default function EventsListScreen({ navigation }) {
   }
 
   // Filtrar eventos según su estado
-  const proximos = events.filter((e) => !e.is_past && !e.is_draft);
-  const pasados = events.filter((e) => e.is_past && !e.is_draft);
-  const borradores = events.filter((e) => e.is_draft);
+  const proximos = events.filter((e) => !e.is_past);
+  const pasados = events.filter((e) => e.is_past);
 
   return (
     <View style={styles.screenContainer}>
@@ -203,9 +201,12 @@ export default function EventsListScreen({ navigation }) {
           <Text style={styles.profileUsername}>@{profile.username}</Text>
         </View>
 
-        {/** Botones de menú (sin funcionalidad) **/}
+        {/** Botones de menú **/}
         <View style={styles.menuContainer}>
-          <TouchableOpacity style={styles.menuItem}>
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => navigation.navigate("Home")}
+          >
             <Ionicons name="home-outline" size={24} color="#333" />
             <Text style={styles.menuText}>Inicio</Text>
           </TouchableOpacity>
@@ -213,7 +214,10 @@ export default function EventsListScreen({ navigation }) {
             <Ionicons name="search-outline" size={24} color="#333" />
             <Text style={styles.menuText}>Explorar</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.menuItem}>
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => navigation.navigate("CreateEvent")}
+          >
             <Ionicons name="add-circle-outline" size={24} color="#333" />
             <Text style={styles.menuText}>Crear</Text>
           </TouchableOpacity>
@@ -221,7 +225,10 @@ export default function EventsListScreen({ navigation }) {
             <Ionicons name="mail-outline" size={24} color="#333" />
             <Text style={styles.menuText}>Bandeja de entrada</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.menuItem, styles.menuItemActive]}>
+          <TouchableOpacity
+            style={[styles.menuItem, styles.menuItemActive]}
+            onPress={() => navigation.navigate("MyEvents")}
+          >
             <Ionicons name="calendar-outline" size={24} color="#007AFF" />
             <Text style={[styles.menuText, styles.menuTextActive]}>
               Mis eventos
@@ -232,7 +239,7 @@ export default function EventsListScreen({ navigation }) {
 
       {/** ─────── Columna Derecha: Pestañas de Eventos ─────── **/}
       <View style={styles.eventsColumn}>
-        {/** Contenedor de pestañas (Próximos / Pasados / Borradores) **/}
+        {/** Pestañas: “Próximos” y “Pasados” **/}
         <View style={styles.tabsContainer}>
           <TouchableOpacity
             style={[
@@ -266,27 +273,11 @@ export default function EventsListScreen({ navigation }) {
               Pasados
             </Text>
           </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.tabItem,
-              activeTab === "Borradores" && styles.tabItemActive,
-            ]}
-            onPress={() => setActiveTab("Borradores")}
-          >
-            <Text
-              style={[
-                styles.tabText,
-                activeTab === "Borradores" && styles.tabTextActive,
-              ]}
-            >
-              Borradores
-            </Text>
-          </TouchableOpacity>
         </View>
 
         {/** Contenido de la pestaña activa **/}
         <ScrollView contentContainerStyle={{ paddingBottom: 80 }}>
-          {/* ────────────────────────── PESTAÑA “Pasados” ────────────────────────── */}
+          {/** PESTAÑA “Pasados” **/}
           {activeTab === "Pasados" && (
             <View style={styles.sectionContainer}>
               <Text style={styles.sectionHeader}>Eventos pasados</Text>
@@ -308,34 +299,12 @@ export default function EventsListScreen({ navigation }) {
             </View>
           )}
 
-          {/* ────────────────────────── PESTAÑA “Próximos” ────────────────────────── */}
+          {/** PESTAÑA “Próximos” **/}
           {activeTab === "Proximos" && (
             <View style={styles.sectionContainer}>
               <Text style={styles.sectionHeader}>Próximos eventos</Text>
               {proximos.length > 0 ? (
                 proximos.map((e) => (
-                  <EventCard
-                    key={e.id.toString()}
-                    event={e}
-                    onPress={() =>
-                      navigation.navigate("EventDetail", { event: e })
-                    }
-                  />
-                ))
-              ) : (
-                <Text style={styles.noEventsText}>
-                  No hay eventos en esta sección
-                </Text>
-              )}
-            </View>
-          )}
-
-          {/* ────────────────────────── PESTAÑA “Borradores” ────────────────────────── */}
-          {activeTab === "Borradores" && (
-            <View style={styles.sectionContainer}>
-              <Text style={styles.sectionHeader}>Borradores</Text>
-              {borradores.length > 0 ? (
-                borradores.map((e) => (
                   <EventCard
                     key={e.id.toString()}
                     event={e}
@@ -371,8 +340,6 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: width > 700 ? "row" : "column",
     backgroundColor: "#F7F9FC",
-    // Si usas React Native Web y aún no ocupa todo:
-    // minHeight: "100vh",
   },
   centered: {
     flex: 1,
@@ -481,10 +448,10 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
 
-  // ───────── Sección de eventos (bloque único por pestaña) ─────────
+  // ───────── Sección de eventos ─────────
   sectionContainer: {
     marginBottom: 24,
-    paddingHorizontal: CARD_MARGIN / 2, // padding horizontal igual al de eventsColumn
+    paddingHorizontal: CARD_MARGIN / 2,
   },
   sectionHeader: {
     fontSize: 20,
@@ -507,7 +474,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     borderRadius: 8,
     padding: 16,
-    // Ahora la card ocupa el 100% del espacio interior de sectionContainer
     width: "100%",
     alignSelf: "center",
     shadowColor: "#000",
@@ -520,14 +486,14 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   cardHover: {
-    backgroundColor: "#F0F9FF", // ligero fondo al pasar el mouse
+    backgroundColor: "#F0F9FF",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 6,
     elevation: 6,
   },
   cardTitle: {
-    fontSize: 20, // título más grande
+    fontSize: 20,
     fontWeight: "700",
     color: "#111",
     marginBottom: 6,
@@ -543,7 +509,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   cardDesc: {
-    fontSize: 15, // un poco más grande que antes
+    fontSize: 15,
     color: "rgba(0,0,0,0.6)",
     marginBottom: 8,
   },
@@ -583,5 +549,18 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 4,
     elevation: 5,
+  },
+
+  // ───────── Botón “Ir a Login” (cuando hay error) ─────────
+  logoutButton: {
+    backgroundColor: "#D1D5DB",
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+  },
+  logoutText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#000",
   },
 });
