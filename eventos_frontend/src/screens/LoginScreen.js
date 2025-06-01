@@ -1,23 +1,46 @@
-// src/screens/LoginScreen.js
+// eventos_frontend/src/screens/LoginScreen.js
+
 import React, { useState } from "react";
 import {
   View,
   Text,
   TextInput,
   TouchableOpacity,
-  Alert,
   StyleSheet,
-  Dimensions,
+  useWindowDimensions,
+  Platform,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import client from "../api/client";
-
-const { width } = Dimensions.get("window");
-const FORM_WIDTH = width * 0.55; // 65% del ancho de la pantalla
+import Toast from "react-native-toast-message";
 
 export default function LoginScreen({ navigation }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+
+  const { width: SCREEN_WIDTH } = useWindowDimensions();
+
+  let formWidth = SCREEN_WIDTH * 0.85;
+  if (SCREEN_WIDTH >= 768) {
+    formWidth = SCREEN_WIDTH * 0.6;
+  }
+  if (SCREEN_WIDTH >= 1024) {
+    formWidth = SCREEN_WIDTH * 0.4;
+  }
+
+  let welcomeFontSize = 28;
+  if (SCREEN_WIDTH >= 768) {
+    welcomeFontSize = 32;
+  }
+  if (SCREEN_WIDTH < 360) {
+    welcomeFontSize = 24;
+  }
+
+  const inputWidth = "100%";
+  let buttonWidth = "100%";
+  if (SCREEN_WIDTH >= 768) {
+    buttonWidth = "60%";
+  }
 
   const submit = async () => {
     try {
@@ -27,44 +50,62 @@ export default function LoginScreen({ navigation }) {
       });
       const token = res.data.access_token;
       await AsyncStorage.setItem("userToken", token);
+
+      Toast.show({
+        type: "success",
+        text1: "¡Inicio de sesión correcto!",
+        text2: `Bienvenido, ${username}`,
+      });
+
       navigation.reset({
         index: 0,
         routes: [{ name: "Main" }],
       });
     } catch (err) {
-      Alert.alert("Error", err.response?.data?.error || err.message);
+      Toast.show({
+        type: "error",
+        text1: "Error al iniciar sesión",
+        text2: err.response?.data?.error || err.message,
+      });
     }
   };
 
   return (
     <View style={styles.screenContainer}>
-      {/* ─── Formulario centrado ─── */}
-      <View style={styles.formContainer}>
-        <Text style={styles.welcomeText}>Bienvenido a Eventos Express</Text>
+      <View style={[styles.formContainer, { width: formWidth }]}>
+        <Text style={[styles.welcomeText, { fontSize: welcomeFontSize }]}>
+          Bienvenido a Eventos Express
+        </Text>
 
         <TextInput
-          placeholder="Correo electrónico"
+          placeholder="Usuario"
           value={username}
           onChangeText={setUsername}
-          keyboardType="email-address"
           autoCapitalize="none"
-          style={styles.input}
+          style={[styles.input, { width: inputWidth }]}
+          placeholderTextColor="#888"
         />
         <TextInput
           placeholder="Contraseña"
           value={password}
           onChangeText={setPassword}
           secureTextEntry
-          style={styles.input}
+          style={[styles.input, { width: inputWidth }]}
+          placeholderTextColor="#888"
         />
 
-        <TouchableOpacity style={styles.primaryButton} onPress={submit}>
+        <TouchableOpacity
+          style={[styles.primaryButton, { width: buttonWidth }]}
+          onPress={submit}
+          activeOpacity={0.7}
+        >
           <Text style={styles.primaryButtonText}>Iniciar Sesión</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={styles.secondaryButton}
+          style={[styles.secondaryButton, { width: buttonWidth }]}
           onPress={() => navigation.navigate("Register")}
+          activeOpacity={0.7}
         >
           <Text style={styles.secondaryButtonText}>Registrarse</Text>
         </TouchableOpacity>
@@ -76,13 +117,17 @@ export default function LoginScreen({ navigation }) {
         </View>
 
         <View style={styles.socialButtonsRow}>
-          <TouchableOpacity style={styles.socialButtonGoogle}>
-            <Text style={styles.socialButtonText}>Continuar con Google</Text>
+          <TouchableOpacity
+            style={styles.socialButtonGoogle}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.socialButtonText}>Google</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.socialButtonFacebook}>
-            <Text style={styles.socialButtonText}>
-              Continuar con Facebook
-            </Text>
+          <TouchableOpacity
+            style={styles.socialButtonFacebook}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.socialButtonText}>Facebook</Text>
           </TouchableOpacity>
         </View>
 
@@ -92,22 +137,22 @@ export default function LoginScreen({ navigation }) {
           <Text style={styles.linkText}>Política de Privacidad</Text>
         </Text>
       </View>
+
+      {/** Invocamos Toast aquí para que esté disponible */}
+      <Toast />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  // ─────────── Pantalla ───────────
   screenContainer: {
     flex: 1,
-    backgroundColor: "#F7F9FC",
-    justifyContent: "center", // centra verticalmente
-    alignItems: "center",     // centra horizontalmente
+    backgroundColor: "#edf2f4",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 16,
   },
-
-  // ─────────── Formulario ───────────
   formContainer: {
-    width: FORM_WIDTH,
     backgroundColor: "#FFFFFF",
     borderRadius: 12,
     padding: 24,
@@ -116,16 +161,15 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+    alignItems: "center",
   },
   welcomeText: {
-    fontSize: 35,
     fontWeight: "600",
-    color: "#333",
-    marginBottom: 44,
+    color: "#333333",
+    marginBottom: 32,
     textAlign: "center",
   },
   input: {
-    width: "70%",
     height: 48,
     borderWidth: 1,
     borderColor: "#D1D5DB",
@@ -134,14 +178,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     marginBottom: 16,
     fontSize: 16,
-    color: "#333",
-    justifyContent: "center",
-    alignSelf: "center"
+    color: "#333333",
+    alignSelf: "center",
   },
   primaryButton: {
-    width: "50%",                
-    alignSelf: "center",           
-    backgroundColor: "#E0EFFF",
+    backgroundColor: "#007AFF",
     borderRadius: 8,
     paddingVertical: 14,
     marginTop: 8,
@@ -149,14 +190,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   primaryButtonText: {
-    color: "#007AFF",
+    color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "600",
   },
   secondaryButton: {
-    justifyContent: "center",
-    width: "50%",                  
-    alignSelf: "center",        
     backgroundColor: "#D1D5DB",
     borderRadius: 8,
     paddingVertical: 14,
@@ -164,16 +202,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-
   secondaryButtonText: {
-    color: "#ffffff",
+    color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "600",
   },
   orContainer: {
     flexDirection: "row",
     alignItems: "center",
-    width: "90%",
+    width: "100%",
     marginVertical: 24,
   },
   line: {

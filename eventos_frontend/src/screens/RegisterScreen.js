@@ -1,4 +1,4 @@
-// eventos_frontend/src/screens/RegisterScreen.js
+// src/screens/RegisterScreen.js
 
 import React, { useState } from "react";
 import {
@@ -6,14 +6,13 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  Alert,
   StyleSheet,
   ScrollView,
-  Dimensions,
+  useWindowDimensions,
+  Platform,
 } from "react-native";
 import client from "../api/client";
-
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
+import Toast from "react-native-toast-message";
 
 export default function RegisterScreen({ navigation }) {
   const [username, setUsername] = useState("");
@@ -22,29 +21,90 @@ export default function RegisterScreen({ navigation }) {
   const [lastName, setLastName] = useState("");
   const [age, setAge] = useState("");
 
+  const { width: SCREEN_WIDTH } = useWindowDimensions();
+  let containerWidth = "100%";
+  if (SCREEN_WIDTH >= 1024) containerWidth = "40%";
+  else if (SCREEN_WIDTH >= 768) containerWidth = "60%";
+  else if (SCREEN_WIDTH >= 500) containerWidth = "80%";
+
+  let headerFontSize = 24;
+  if (SCREEN_WIDTH >= 768) headerFontSize = 28;
+  if (SCREEN_WIDTH < 360) headerFontSize = 20;
+
+  const isSmallScreen = SCREEN_WIDTH < 380;
+  const buttonWidth = isSmallScreen ? "100%" : "45%";
+
   const submit = async () => {
+    // 1) Validaciones simples antes de llamar al API
+    if (username.trim() === "") {
+      Toast.show({
+        type: "error",
+        text1: "Error",
+        text2: "El usuario es obligatorio.",
+      });
+      return;
+    }
+    if (password.trim().length < 6) {
+      Toast.show({
+        type: "error",
+        text1: "Error",
+        text2: "La contraseña debe tener al menos 6 caracteres.",
+      });
+      return;
+    }
+    if (firstName.trim() === "" || lastName.trim() === "") {
+      Toast.show({
+        type: "error",
+        text1: "Error",
+        text2: "Nombre y apellido son obligatorios.",
+      });
+      return;
+    }
+    const ageNum = Number(age);
+    if (isNaN(ageNum) || ageNum < 1 || ageNum > 120) {
+      Toast.show({
+        type: "error",
+        text1: "Error",
+        text2: "La edad debe ser un número válido entre 1 y 120.",
+      });
+      return;
+    }
+
+    // 2) Llamada al backend
     try {
       await client.post("/auth/register", {
         username,
         password,
         first_name: firstName,
         last_name: lastName,
-        age: Number(age),
+        age: ageNum,
       });
-      Alert.alert("Éxito", "Usuario registrado");
-      navigation.navigate("Login");
+
+      // En lugar de Alert.alert, mostramos un toast de éxito:
+      Toast.show({
+        type: "success",
+        text1: "Éxito",
+        text2: "Registro completado. Ya puedes iniciar sesión.",
+      });
+
+      // Después de un pequeño delay (para que el usuario vea el toast), vamos al Login
+      setTimeout(() => navigation.navigate("Login"), 1500);
     } catch (err) {
-      Alert.alert("Error", err.response?.data?.error || err.message);
+      Toast.show({
+        type: "error",
+        text1: "Error al registrar",
+        text2: err.response?.data?.error || err.message,
+      });
     }
   };
 
   return (
     <ScrollView contentContainerStyle={styles.outerScroll}>
-      <View style={styles.innerContainer}>
-        {/** ───────── TÍTULO PRINCIPAL ───────── */}
-        <Text style={styles.headerTitle}>Registro a Eventos</Text>
+      <View style={[styles.innerContainer, { width: containerWidth }]}>
+        <Text style={[styles.headerTitle, { fontSize: headerFontSize }]}>
+          Regístrate
+        </Text>
 
-        {/** ───────── CAMPO: USUARIO ───────── */}
         <View style={styles.inputGroup}>
           <Text style={styles.inputLabel}>Usuario</Text>
           <TextInput
@@ -52,10 +112,11 @@ export default function RegisterScreen({ navigation }) {
             onChangeText={setUsername}
             style={styles.input}
             autoCapitalize="none"
+            placeholder="username"
+            placeholderTextColor="#888"
           />
         </View>
 
-        {/** ───────── CAMPO: CONTRASEÑA ───────── */}
         <View style={styles.inputGroup}>
           <Text style={styles.inputLabel}>Contraseña</Text>
           <TextInput
@@ -63,30 +124,33 @@ export default function RegisterScreen({ navigation }) {
             value={password}
             onChangeText={setPassword}
             style={styles.input}
+            placeholder="••••••••"
+            placeholderTextColor="#888"
           />
         </View>
 
-        {/** ───────── CAMPO: NOMBRE ───────── */}
         <View style={styles.inputGroup}>
           <Text style={styles.inputLabel}>Nombre</Text>
           <TextInput
             value={firstName}
             onChangeText={setFirstName}
             style={styles.input}
+            placeholder="Tu nombre"
+            placeholderTextColor="#888"
           />
         </View>
 
-        {/** ───────── CAMPO: APELLIDO ───────── */}
         <View style={styles.inputGroup}>
           <Text style={styles.inputLabel}>Apellido</Text>
           <TextInput
             value={lastName}
             onChangeText={setLastName}
             style={styles.input}
+            placeholder="Tu apellido"
+            placeholderTextColor="#888"
           />
         </View>
 
-        {/** ───────── CAMPO: EDAD ───────── */}
         <View style={styles.inputGroup}>
           <Text style={styles.inputLabel}>Edad</Text>
           <TextInput
@@ -94,20 +158,26 @@ export default function RegisterScreen({ navigation }) {
             value={age}
             onChangeText={setAge}
             style={styles.input}
+            placeholder="Ej: 27"
+            placeholderTextColor="#888"
           />
         </View>
 
-        {/** ───────── BOTONES ───────── */}
         <View style={styles.buttonsRow}>
-          <TouchableOpacity style={styles.smallButton} onPress={submit}>
-            <Text style={styles.smallButtonText}>Registrarse</Text>
+          <TouchableOpacity
+            style={[styles.primaryButton, { width: buttonWidth }]}
+            onPress={submit}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.primaryButtonText}>Registrarse</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.smallButton}
+            style={[styles.secondaryButton, { width: buttonWidth }]}
             onPress={() => navigation.navigate("Login")}
+            activeOpacity={0.7}
           >
-            <Text style={styles.smallButtonText}>Volver al Login</Text>
+            <Text style={styles.secondaryButtonText}>Volver al Login</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -116,42 +186,34 @@ export default function RegisterScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  /**
-   * outerScroll: garantiza que el ScrollView crezca para ocupar toda
-   * la pantalla en caso de muchos inputs. Fondo neutro.
-   */
   outerScroll: {
     flexGrow: 1,
-    backgroundColor: "#ffffff",
+    backgroundColor: "#F7F9FC",
     paddingVertical: 16,
+    alignItems: "center",
   },
 
-  /**
-   * innerContainer: ocupa 70% del ancho en pantallas amplias (>700px)
-   * y 100% en pantallas pequeñas. Se centra horizontalmente.
-   */
   innerContainer: {
-    width: SCREEN_WIDTH > 700 ? "50%" : "100%",
-    alignSelf: "center",
-    paddingHorizontal: 16,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    padding: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    marginVertical: 16,
   },
 
-  /**
-   * headerTitle: título principal centrado con margen inferior
-   */
   headerTitle: {
-    fontSize: 24,
     fontWeight: "700",
     color: "#333333",
     textAlign: "center",
     marginBottom: 24,
   },
 
-  /**
-   * Cada inputGroup contiene etiqueta + TextInput
-   */
   inputGroup: {
-    marginBottom: 20,
+    marginBottom: 18,
   },
   inputLabel: {
     fontSize: 16,
@@ -161,35 +223,43 @@ const styles = StyleSheet.create({
   },
   input: {
     width: "100%",
+    height: 44,
     borderWidth: 1,
-    borderColor: "#BBBBBB",
+    borderColor: "#CCCCCC",
     borderRadius: 8,
-    paddingVertical: 10,
     paddingHorizontal: 12,
-    fontSize: 16,
+    fontSize: 15,
     backgroundColor: "#FAFAFA",
     color: "#222222",
   },
 
-  /**
-   * buttonsRow: fila que agrupa 2 botones,
-   * cada uno ocupa 40% del ancho del contenedor padre,
-   * con espacio entre ellos
-   */
   buttonsRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginTop: 16,
+    marginTop: 24,
+    flexWrap: "wrap",
+    gap: 8,
   },
-  smallButton: {
-    width: "40%",
+  primaryButton: {
     backgroundColor: "#007AFF",
-    borderRadius: 6,
+    borderRadius: 8,
+    paddingVertical: 12,
+    alignItems: "center",
+    marginBottom: Platform.OS === "web" ? 0 : 8,
+  },
+  primaryButtonText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  secondaryButton: {
+    backgroundColor: "#E0EFFF",
+    borderRadius: 8,
     paddingVertical: 12,
     alignItems: "center",
   },
-  smallButtonText: {
-    color: "#FFFFFF",
+  secondaryButtonText: {
+    color: "#007AFF",
     fontSize: 16,
     fontWeight: "600",
   },

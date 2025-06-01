@@ -1,5 +1,5 @@
-//eventos_frontend\src\navigation\AppTabs.js
 import React from "react";
+import { Platform } from "react-native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -18,11 +18,19 @@ export default function AppTabs() {
         headerShown: false,
         tabBarActiveTintColor: "#007AFF",
         tabBarInactiveTintColor: "#8e8e93",
-        tabBarLabelStyle: { fontSize: 12 },
-        tabBarStyle: { backgroundColor: "#fff", borderTopColor: "#eee" },
+        tabBarLabelStyle: {
+          fontSize: 12,
+          marginBottom: Platform.OS === "ios" ? 0 : 4,
+        },
+        tabBarStyle: {
+          backgroundColor: "#fff",
+          borderTopColor: "#eee",
+          height: Platform.OS === "ios" ? 80 : 70,
+          paddingBottom: Platform.OS === "ios" ? 20 : 10,
+          paddingTop: 8,
+        },
         tabBarIcon: ({ color, size }) => {
           let iconName;
-
           switch (route.name) {
             case "EventsStack":
               iconName = "calendar-outline";
@@ -39,8 +47,7 @@ export default function AppTabs() {
             default:
               iconName = "ellipse-outline";
           }
-
-          return <Ionicons name={iconName} size={size} color={color} />;
+          return <Ionicons name={iconName} size={size + 2} color={color} />;
         },
       })}
     >

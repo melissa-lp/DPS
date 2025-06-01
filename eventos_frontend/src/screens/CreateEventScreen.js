@@ -6,7 +6,6 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  Alert,
   StyleSheet,
   ScrollView,
   Dimensions,
@@ -16,6 +15,7 @@ import {
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import client from "../api/client";
+import Toast from "react-native-toast-message";
 
 // Solo importamos DateTimePicker en iOS/Android
 let DateTimePicker = null;
@@ -56,10 +56,12 @@ export default function CreateEventScreen({ navigation }) {
       }
     } catch (error) {
       console.log("Error al cargar tipos de licencia:", error);
-      Alert.alert(
-        "Advertencia",
-        "No se pudieron cargar los tipos de licencia. Se usarán valores predeterminados."
-      );
+      Toast.show({
+        type: "error",
+        text1: "Advertencia",
+        text2:
+          "No se pudieron cargar licencias. Se usarán valores predeterminados.",
+      });
       setLicenseOptions([
         { code: "CC-BY", description: "Creative Commons Attribution" },
       ]);
@@ -110,15 +112,40 @@ export default function CreateEventScreen({ navigation }) {
       dateValue = formatInputDate(eventDate);
     }
 
-    if (!title.trim() || !dateValue || !licenseCode.trim()) {
-      Alert.alert("Error", "Título, fecha y licencia son obligatorios");
+    // Validaciones
+    if (!title.trim()) {
+      Toast.show({
+        type: "error",
+        text1: "Error",
+        text2: "El título es obligatorio.",
+      });
+      return;
+    }
+    if (!dateValue) {
+      Toast.show({
+        type: "error",
+        text1: "Error",
+        text2: "Debes seleccionar fecha y hora.",
+      });
+      return;
+    }
+    if (!licenseCode.trim()) {
+      Toast.show({
+        type: "error",
+        text1: "Error",
+        text2: "Selecciona un tipo de licencia.",
+      });
       return;
     }
 
     try {
       const token = await AsyncStorage.getItem("userToken");
       if (!token) {
-        Alert.alert("Error", "No se encontró token de autenticación");
+        Toast.show({
+          type: "error",
+          text1: "Error",
+          text2: "No se encontró token de autenticación.",
+        });
         return;
       }
 
@@ -131,12 +158,16 @@ export default function CreateEventScreen({ navigation }) {
       };
 
       await client.post("/events", payload, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
 
-      Alert.alert("Éxito", "Evento creado correctamente");
+      Toast.show({
+        type: "success",
+        text1: "¡Éxito!",
+        text2: "Evento creado correctamente.",
+      });
+
+      // Limpiar formulario
       setTitle("");
       setDescription("");
       setEventDate(null);
@@ -144,13 +175,15 @@ export default function CreateEventScreen({ navigation }) {
       setWebTime("");
       setLocation("");
       setLicenseCode("CC-BY");
+
       navigation.navigate("EventsList");
     } catch (err) {
       console.log("Error al crear evento:", err.response || err.message);
-      Alert.alert(
-        "Error",
-        err.response?.data?.error || "No se pudo crear el evento"
-      );
+      Toast.show({
+        type: "error",
+        text1: "Error al crear evento",
+        text2: err.response?.data?.error || "No se pudo crear el evento.",
+      });
     }
   };
 
@@ -248,7 +281,6 @@ export default function CreateEventScreen({ navigation }) {
           <View
             style={[styles.dateTimeRow, isSmallScreen && styles.dateTimeColumn]}
           >
-            {/* Input de fecha nativo para web */}
             <View style={styles.dateInputContainer}>
               <Text style={styles.dateTimeLabel}>📅 Fecha</Text>
               <input
@@ -260,7 +292,6 @@ export default function CreateEventScreen({ navigation }) {
               />
             </View>
 
-            {/* Input de hora nativo para web */}
             <View style={styles.timeInputContainer}>
               <Text style={styles.dateTimeLabel}>🕐 Hora</Text>
               <input
@@ -272,7 +303,7 @@ export default function CreateEventScreen({ navigation }) {
             </View>
           </View>
 
-          {/* Vista previa mejorada */}
+          {/* Vista previa */}
           {(webDate || webTime) && (
             <View style={styles.datePreview}>
               <View style={styles.datePreviewHeader}>
@@ -342,7 +373,7 @@ export default function CreateEventScreen({ navigation }) {
             isSmallScreen && styles.headerTitleMobile,
           ]}
         >
-          Crear Evento
+          Nuevo Evento
         </Text>
 
         <View style={styles.inputGroup}>
@@ -353,6 +384,7 @@ export default function CreateEventScreen({ navigation }) {
             style={styles.input}
             autoCapitalize="sentences"
             placeholder="Ingresa el título del evento"
+            placeholderTextColor="#888"
           />
         </View>
 
@@ -365,6 +397,7 @@ export default function CreateEventScreen({ navigation }) {
             multiline
             numberOfLines={isSmallScreen ? 3 : 4}
             placeholder="Describe tu evento..."
+            placeholderTextColor="#888"
           />
         </View>
 
@@ -377,6 +410,7 @@ export default function CreateEventScreen({ navigation }) {
             onChangeText={setLocation}
             style={styles.input}
             placeholder="¿Dónde será el evento?"
+            placeholderTextColor="#888"
           />
         </View>
 
@@ -386,17 +420,22 @@ export default function CreateEventScreen({ navigation }) {
           <TouchableOpacity
             style={[styles.button, styles.primaryButton]}
             onPress={submit}
+            activeOpacity={0.7}
           >
             <Text style={styles.buttonText}>Crear Evento</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.button, styles.secondaryButton]}
             onPress={() => navigation.goBack()}
+            activeOpacity={0.7}
           >
             <Text style={styles.buttonText}>Cancelar</Text>
           </TouchableOpacity>
         </View>
       </View>
+
+      {/** Montamos el Toast para que funcione */}
+      <Toast />
     </ScrollView>
   );
 }
@@ -431,6 +470,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     color: "#222222",
+    marginBottom: 8,
+  },
+  dateTimeLabel: {
     marginBottom: 8,
   },
   input: {
@@ -479,16 +521,17 @@ const styles = StyleSheet.create({
   },
   dateInputContainer: {
     flex: 1,
-    marginBottom: 8,
+    marginBottom: 10,
   },
   timeInputContainer: {
     flex: 1,
-    marginBottom: 8,
+    marginBottom: 10,
   },
   webDateInput: {
     width: "100%",
-    padding: "12px 16px",
+    height: "48px",
     border: "1px solid #DDDDDD",
+    margin: 2,
     borderRadius: 12,
     fontSize: 16,
     backgroundColor: "#FAFAFA",
@@ -497,7 +540,8 @@ const styles = StyleSheet.create({
   },
   webTimeInput: {
     width: "100%",
-    padding: "12px 16px",
+    height: "48px",
+    padding: "2px",
     border: "1px solid #DDDDDD",
     borderRadius: 12,
     fontSize: 16,

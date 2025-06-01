@@ -1,4 +1,5 @@
 // eventos_frontend/src/screens/ProfileScreen.js
+
 import React, { useEffect, useState } from "react";
 import {
   View,
@@ -12,13 +13,18 @@ import {
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import client from "../api/client";
 
-const { width } = Dimensions.get("window");
-const CARD_WIDTH = width * 0.45; // 65% del ancho de la pantalla
-const AVATAR_URI = "https://ui-avatars.com/api/?name=User&background=ddd&color=333&size=128";
-
 export default function ProfileScreen({ navigation }) {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  const { width: SCREEN_WIDTH } = Dimensions.get("window");
+
+  let cardWidth = SCREEN_WIDTH * 0.85;
+  if (SCREEN_WIDTH >= 768) {
+    cardWidth = SCREEN_WIDTH * 0.6;
+  } else if (SCREEN_WIDTH >= 1024) {
+    cardWidth = SCREEN_WIDTH * 0.45;
+  }
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -55,9 +61,22 @@ export default function ProfileScreen({ navigation }) {
 
   return (
     <View style={styles.screenContainer}>
-      <View style={styles.card}>
-        {/* Avatar circular */}
-        <Image source={{ uri: AVATAR_URI }} style={styles.avatar} />
+      {/* Título de sección */}
+      <Text style={styles.sectionHeader}>Mi Perfil</Text>
+
+      <View style={[styles.card, { width: cardWidth }]}>
+        <View style={styles.avatarBackground}>
+          <Image
+            source={{
+              uri:
+                profile.avatar_url ||
+                `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                  profile.first_name + " " + profile.last_name
+                )}&background=ddd&color=333&size=128`,
+            }}
+            style={styles.avatar}
+          />
+        </View>
 
         {/* Nombre completo */}
         <Text style={styles.name}>
@@ -68,10 +87,12 @@ export default function ProfileScreen({ navigation }) {
         <Text style={styles.username}>@{profile.username}</Text>
 
         {/* Edad */}
-        <View style={styles.infoRow}>
-          <Text style={styles.label}>Edad:</Text>
-          <Text style={styles.value}>{profile.age}</Text>
-        </View>
+        {profile.age != null && (
+          <View style={styles.infoRow}>
+            <Text style={styles.label}>Edad:</Text>
+            <Text style={styles.value}>{profile.age}</Text>
+          </View>
+        )}
 
         {/* Botón Cerrar Sesión */}
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
@@ -83,12 +104,12 @@ export default function ProfileScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  // ─────────── Pantalla ───────────
   screenContainer: {
     flex: 1,
     backgroundColor: "#F7F9FC",
-    justifyContent: "center",
+    justifyContent: "flex-start",
     alignItems: "center",
+    paddingTop: 40,
   },
   centered: {
     flex: 1,
@@ -96,22 +117,39 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
 
-  // ─────────── Tarjeta principal ───────────
+  sectionHeader: {
+    fontSize: 28,
+    fontWeight: "700",
+    color: "#1F2937",
+    marginBottom: 24,
+    textAlign: "center",
+  },
+
+  // Card
   card: {
-    width: CARD_WIDTH,
     backgroundColor: "#FFFFFF",
     borderRadius: 16,
     alignItems: "center",
-    paddingVertical: 24,
-    paddingHorizontal: 16,
+    paddingVertical: 32,
+    paddingHorizontal: 24,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 4,
   },
 
-  // ─────────── Avatar ───────────
+  avatarBackground: {
+    backgroundColor: "#E3F2FD",
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+
+  // Avatar
   avatar: {
     width: 100,
     height: 100,
@@ -119,52 +157,55 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: "#007AFF",
     backgroundColor: "#EEE",
-    marginBottom: 16,
   },
 
-  // ─────────── Texto principal ───────────
   name: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: "700",
-    color: "#222",
+    color: "#111827",
     marginBottom: 4,
     textAlign: "center",
   },
   username: {
     fontSize: 16,
-    color: "#555",
-    marginBottom: 16,
+    color: "#6B7280",
+    marginBottom: 20,
     textAlign: "center",
   },
 
-  // ─────────── Fila de información ───────────
+  // Info de perfil
   infoRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 24,
+    marginBottom: 32,
   },
   label: {
     fontSize: 16,
-    color: "#444",
+    color: "#4B5563",
     fontWeight: "500",
     marginRight: 6,
   },
   value: {
     fontSize: 16,
-    color: "#222",
+    color: "#111827",
     fontWeight: "600",
   },
 
-  // ─────────── Botón Cerrar Sesión ───────────
+  // Cerrar Sesión
   logoutButton: {
-    width: "50%",
-    backgroundColor: "#D1D5DB",
+    width: "60%",
+    backgroundColor: "#FF3B30",
     borderRadius: 10,
     paddingVertical: 14,
     alignItems: "center",
+    shadowColor: "#FF3B30",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 2,
   },
   logoutText: {
-    color: "#00000",
+    color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "600",
   },

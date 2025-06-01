@@ -5,22 +5,20 @@ import {
   View,
   Text,
   TextInput,
-  Button,
-  Alert,
-  StyleSheet,
   ActivityIndicator,
   ScrollView,
   FlatList,
   Dimensions,
   Platform,
   TouchableOpacity,
+  Alert,
+  StyleSheet,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Ionicons } from "@expo/vector-icons";
 import client from "../api/client";
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
-
-// Check if device is a tablet
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const isTablet = SCREEN_WIDTH >= 768;
 const isSmallPhone = SCREEN_WIDTH < 375;
 
@@ -49,7 +47,7 @@ export default function EventDetailScreen({ route, navigation }) {
   const { event } = route.params;
   const [isPast, setIsPast] = useState(false);
   const [comment, setComment] = useState("");
-  const [rating, setRating] = useState("");
+  const [rating, setRating] = useState(0); // ahora es número
   const [rsvpStatus, setRsvpStatus] = useState(null);
   const [loadingRsvp, setLoadingRsvp] = useState(false);
   const [loadingComment, setLoadingComment] = useState(false);
@@ -138,14 +136,8 @@ export default function EventDetailScreen({ route, navigation }) {
   };
 
   const handleSubmitComment = async () => {
-    if (!comment.trim() || !rating.trim()) {
+    if (!comment.trim() || rating === 0) {
       Alert.alert("Error", "Comentario y calificación son obligatorios");
-      return;
-    }
-
-    const ratingNum = Number(rating);
-    if (isNaN(ratingNum) || ratingNum < 1 || ratingNum > 5) {
-      Alert.alert("Error", "La calificación debe ser un número entre 1 y 5");
       return;
     }
 
@@ -156,13 +148,13 @@ export default function EventDetailScreen({ route, navigation }) {
         `/comments/${event.id}`,
         {
           content: comment.trim(),
-          rating: ratingNum,
+          rating: rating,
         },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       Alert.alert("Éxito", "Comentario enviado");
       setComment("");
-      setRating("");
+      setRating(0);
       loadComments();
     } catch (err) {
       console.log("Error al comentar:", err.response || err.message);
@@ -173,30 +165,6 @@ export default function EventDetailScreen({ route, navigation }) {
       setLoadingComment(false);
     }
   };
-
-  // Custom button component for better mobile experience
-  const CustomButton = ({ title, onPress, disabled, variant = "primary" }) => (
-    <TouchableOpacity
-      style={[
-        styles.customButton,
-        variant === "secondary" && styles.customButtonSecondary,
-        disabled && styles.customButtonDisabled,
-      ]}
-      onPress={onPress}
-      disabled={disabled}
-      activeOpacity={0.7}
-    >
-      <Text
-        style={[
-          styles.customButtonText,
-          variant === "secondary" && styles.customButtonTextSecondary,
-          disabled && styles.customButtonTextDisabled,
-        ]}
-      >
-        {title}
-      </Text>
-    </TouchableOpacity>
-  );
 
   const renderComment = ({ item }) => (
     <View style={styles.commentContainer}>
@@ -209,6 +177,18 @@ export default function EventDetailScreen({ route, navigation }) {
         {new Date(item.created_at).toLocaleDateString()}
       </Text>
     </View>
+  );
+
+  // Componente de estrella individual
+  const Star = ({ filled, onPress }) => (
+    <TouchableOpacity onPress={onPress} activeOpacity={0.7}>
+      <Ionicons
+        name={filled ? "star" : "star-outline"}
+        size={isSmallPhone ? 24 : 30}
+        color={filled ? "#f59e0b" : "#d1d5db"}
+        style={{ marginHorizontal: 4 }}
+      />
+    </TouchableOpacity>
   );
 
   return (
@@ -243,21 +223,44 @@ export default function EventDetailScreen({ route, navigation }) {
             ) : (
               <View style={styles.rsvpRow}>
                 <View style={styles.rsvpButtonWrapper}>
-                  <CustomButton
-                    title={
-                      rsvpStatus === "accepted" ? "Asistiendo ✓" : "Asistir"
-                    }
+                  <TouchableOpacity
+                    style={[
+                      styles.customButton,
+                      rsvpStatus === "accepted" && styles.customButtonDisabled,
+                    ]}
                     onPress={() => handleRsvp("accepted")}
                     disabled={rsvpStatus === "accepted"}
-                  />
+                  >
+                    <Text
+                      style={[
+                        styles.customButtonText,
+                        rsvpStatus === "accepted" &&
+                          styles.customButtonTextDisabled,
+                      ]}
+                    >
+                      {rsvpStatus === "accepted" ? "Asistiendo ✓" : "Asistir"}
+                    </Text>
+                  </TouchableOpacity>
                 </View>
                 <View style={styles.rsvpButtonWrapper}>
-                  <CustomButton
-                    title="Cancelar"
-                    variant="secondary"
+                  <TouchableOpacity
+                    style={[
+                      styles.customButtonSecondary,
+                      rsvpStatus !== "accepted" && styles.customButtonDisabled,
+                    ]}
                     onPress={() => handleRsvp("declined")}
                     disabled={rsvpStatus !== "accepted"}
-                  />
+                  >
+                    <Text
+                      style={[
+                        styles.customButtonText,
+                        rsvpStatus !== "accepted" &&
+                          styles.customButtonTextDisabled,
+                      ]}
+                    >
+                      Cancelar
+                    </Text>
+                  </TouchableOpacity>
                 </View>
               </View>
             )}
@@ -289,6 +292,7 @@ export default function EventDetailScreen({ route, navigation }) {
             {attended && (
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Dejar Comentario</Text>
+
                 <TextInput
                   placeholder="Escribe tu comentario..."
                   value={comment}
@@ -298,24 +302,34 @@ export default function EventDetailScreen({ route, navigation }) {
                   numberOfLines={4}
                   textAlignVertical="top"
                 />
-                <View style={styles.ratingContainer}>
-                  <TextInput
-                    placeholder="Calificación (1–5)"
-                    value={rating}
-                    onChangeText={setRating}
-                    keyboardType="numeric"
-                    style={[styles.input, styles.ratingInput]}
-                    maxLength={1}
-                  />
+
+                {/** ───────── Selección de estrellas ───────── */}
+                <View style={styles.section}>
+                  <Text style={styles.sectionSubtitle}>Tu calificación:</Text>
+                  <View style={styles.starContainer}>
+                    {[1, 2, 3, 4, 5].map((i) => (
+                      <Star
+                        key={i}
+                        filled={i <= rating}
+                        onPress={() => setRating(i)}
+                      />
+                    ))}
+                  </View>
                 </View>
+
                 {loadingComment ? (
                   <ActivityIndicator size="small" color="#007AFF" />
                 ) : (
                   <View style={styles.submitCommentWrapper}>
-                    <CustomButton
-                      title="Enviar Comentario"
+                    <TouchableOpacity
+                      style={styles.submitButton}
                       onPress={handleSubmitComment}
-                    />
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.submitButtonText}>
+                        Enviar Comentario
+                      </Text>
+                    </TouchableOpacity>
                   </View>
                 )}
               </View>
@@ -385,6 +399,13 @@ const styles = StyleSheet.create({
     color: "#2d3748",
   },
 
+  sectionSubtitle: {
+    fontSize: isSmallPhone ? 15 : 17,
+    fontWeight: "500",
+    marginBottom: 8,
+    color: "#4a5568",
+  },
+
   descText: {
     fontSize: isSmallPhone ? 14 : 15,
     color: "#4a5568",
@@ -400,10 +421,9 @@ const styles = StyleSheet.create({
 
   rsvpButtonWrapper: {
     width: isSmallPhone ? "100%" : isTablet ? "30%" : "40%",
-    maxWidth: 200,
+    marginBottom: isSmallPhone ? 8 : 0,
   },
 
-  // Custom button styles for better mobile experience
   customButton: {
     backgroundColor: "#007AFF",
     paddingVertical: 12,
@@ -411,7 +431,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",
-    minHeight: 44, // Better touch target
+    minHeight: 44,
     elevation: 2,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
@@ -421,10 +441,20 @@ const styles = StyleSheet.create({
 
   customButtonSecondary: {
     backgroundColor: "#ff3b30",
+    borderWidth: 1,
+    borderColor: "#ff3b30",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: 44,
+    elevation: 0,
   },
 
   customButtonDisabled: {
     backgroundColor: "#c7c7cc",
+    borderColor: "#c7c7cc",
     elevation: 0,
     shadowOpacity: 0,
   },
@@ -433,10 +463,6 @@ const styles = StyleSheet.create({
     color: "#ffffff",
     fontSize: isSmallPhone ? 14 : 16,
     fontWeight: "600",
-  },
-
-  customButtonTextSecondary: {
-    color: "#ffffff",
   },
 
   customButtonTextDisabled: {
@@ -452,7 +478,7 @@ const styles = StyleSheet.create({
     fontSize: isSmallPhone ? 14 : 15,
     color: "#1f2937",
     marginBottom: 12,
-    minHeight: 44, // Better touch target
+    minHeight: 44,
   },
 
   multilineInput: {
@@ -460,19 +486,36 @@ const styles = StyleSheet.create({
     textAlignVertical: "top",
   },
 
-  ratingContainer: {
-    alignItems: "flex-start",
-  },
-
-  ratingInput: {
-    width: isSmallPhone ? 80 : 100,
-    textAlign: "center",
+  // Contenedor de estrellas
+  starContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 12,
   },
 
   submitCommentWrapper: {
     marginTop: 8,
     alignSelf: "stretch",
     maxWidth: isTablet ? 200 : "100%",
+  },
+
+  submitButton: {
+    backgroundColor: "#007AFF",
+    paddingVertical: 14,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+  },
+
+  submitButtonText: {
+    color: "#FFFFFF",
+    fontSize: isSmallPhone ? 15 : 16,
+    fontWeight: "600",
   },
 
   commentContainer: {
