@@ -1,6 +1,6 @@
-// eventos_frontend/src/screens/EventsListScreen.js
+// eventos_frontend\src\screens\EventsListScreen.js
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -17,6 +17,7 @@ import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import client from "../api/client";
 import { useWindowDimensions } from "react-native";
+import { useIsFocused } from "@react-navigation/native";
 
 function formatSpanishDate(date) {
   const day = date.getDate();
@@ -97,41 +98,51 @@ export default function EventsListScreen({ navigation }) {
   const isDesktop = width > 700;
   const [isMenuOpen, setIsMenuOpen] = useState(isDesktop);
 
+  const isFocused = useIsFocused();
+
   useEffect(() => {
     setIsMenuOpen(isDesktop);
   }, [isDesktop]);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const token = await AsyncStorage.getItem("userToken");
+  const fetchData = useCallback(async () => {
+    try {
+      setLoading(true);
+      const token = await AsyncStorage.getItem("userToken");
 
-        const profileRes = await client.get("/me", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setProfile(profileRes.data);
+      const profileRes = await client.get("/me", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setProfile(profileRes.data);
 
-        const res = await client.get("/events", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+      const res = await client.get("/events", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
-        const processedEvents = res.data.map((event) => ({
-          ...event,
-          event_date: new Date(event.event_date),
-          is_past: new Date(event.event_date) < new Date(),
-        }));
-        setEvents(processedEvents);
-      } catch (err) {
-        console.log("Error fetching data:", err);
-        if (err.response?.status === 401) {
-          setProfileError(true);
-        }
-      } finally {
-        setLoading(false);
+      const processedEvents = res.data.map((event) => ({
+        ...event,
+        event_date: new Date(event.event_date),
+        is_past: new Date(event.event_date) < new Date(),
+      }));
+      setEvents(processedEvents);
+    } catch (err) {
+      console.log("Error fetching data:", err);
+      if (err.response?.status === 401) {
+        setProfileError(true);
       }
-    };
-    fetchData();
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  useEffect(() => {
+    if (isFocused) {
+      fetchData();
+    }
+  }, [isFocused, fetchData]);
 
   if (loading) {
     return (
@@ -198,17 +209,19 @@ export default function EventsListScreen({ navigation }) {
             </View>
 
             <View style={styles.menuContainer}>
-              <TouchableOpacity
-                style={styles.menuItem}
-                onPress={() => navigation.navigate("Home")}
-              >
+              <TouchableOpacity style={styles.menuItem}>
                 <Ionicons name="home-outline" size={24} color="#333" />
                 <Text style={styles.menuText}>Inicio</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.menuItem}>
+
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={() => navigation.navigate("CreatedByMeScreen")}
+              >
                 <Ionicons name="search-outline" size={24} color="#333" />
-                <Text style={styles.menuText}>Explorar</Text>
+                <Text style={styles.menuText}>Mis eventos</Text>
               </TouchableOpacity>
+
               <TouchableOpacity
                 style={styles.menuItem}
                 onPress={() => navigation.navigate("CreateEvent")}
@@ -216,17 +229,19 @@ export default function EventsListScreen({ navigation }) {
                 <Ionicons name="add-circle-outline" size={24} color="#333" />
                 <Text style={styles.menuText}>Crear</Text>
               </TouchableOpacity>
+
               <TouchableOpacity style={styles.menuItem}>
                 <Ionicons name="mail-outline" size={24} color="#333" />
                 <Text style={styles.menuText}>Bandeja de entrada</Text>
               </TouchableOpacity>
+
               <TouchableOpacity
                 style={[styles.menuItem, styles.menuItemActive]}
                 onPress={() => navigation.navigate("MyEvents")}
               >
                 <Ionicons name="calendar-outline" size={24} color="#007AFF" />
                 <Text style={[styles.menuText, styles.menuTextActive]}>
-                  Mis eventos
+                  Eventos asistidos
                 </Text>
               </TouchableOpacity>
             </View>
@@ -436,7 +451,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#F7F9FC",
   },
-
   screenContainer: {
     flex: 1,
     flexDirection: "row",
@@ -454,7 +468,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginBottom: 16,
   },
-
   mobileHeader: {
     position: "absolute",
     top: 0,
@@ -480,7 +493,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#333",
   },
-
   profileColumn: {
     width: 240,
     backgroundColor: "#FFFFFF",
@@ -535,7 +547,6 @@ const styles = StyleSheet.create({
     color: "#007AFF",
     fontWeight: "700",
   },
-
   overlayBackground: {
     position: "absolute",
     top: 0,
@@ -564,7 +575,6 @@ const styles = StyleSheet.create({
   modalMenuContent: {
     flex: 1,
   },
-
   eventsColumn: {
     flex: 1,
     backgroundColor: "#F7F9FC",
@@ -629,7 +639,6 @@ const styles = StyleSheet.create({
     marginVertical: 32,
     fontStyle: "italic",
   },
-
   cardContainer: {
     marginBottom: 16,
   },
@@ -708,7 +717,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
   },
-
   fab: {
     position: "absolute",
     right: 20,
@@ -725,7 +733,6 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 8,
   },
-
   logoutButton: {
     backgroundColor: "#E5E7EB",
     borderRadius: 12,

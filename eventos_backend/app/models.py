@@ -30,9 +30,10 @@ class Event(db.Model):
     location     = db.Column(db.String(150))
     license_code = db.Column(db.String(20), db.ForeignKey("license_types.code"), nullable=False)
     created_at   = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at   = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     creator  = db.relationship("User", back_populates="events")
-    license  = db.relationship("LicenseType") 
+    license  = db.relationship("LicenseType")
     comments = db.relationship("Comment", back_populates="event", cascade="all, delete-orphan")
     rsvps    = db.relationship("RSVP", back_populates="event", cascade="all, delete-orphan")
 

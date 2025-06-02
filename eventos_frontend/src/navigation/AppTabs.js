@@ -67,7 +67,7 @@ export default function AppTabs() {
       <Tab.Screen
         name="MyEvents"
         component={MyEventsScreen}
-        options={{ title: "Mis Eventos" }}
+        options={{ title: "Eventos asistidos" }}
       />
       <Tab.Screen
         name="Stats"

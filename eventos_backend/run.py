@@ -203,11 +203,145 @@ def create_app():
             } for e in events
         ]), 200
         
+        
+    @app.route('/my-created-events', methods=['GET'])
+    @jwt_required()
+    def my_created_events():
+        """
+        Devuelve todos los eventos que el usuario autenticado ha creado,
+        ordenados por fecha de evento ascendente.
+        """
+        user_id = get_jwt_identity()
+
+        try:
+            eventos = Event.query.filter_by(creator_id=user_id).order_by(Event.event_date.asc()).all()
+            resultado = []
+            for e in eventos:
+                resultado.append({
+                    "id":           e.id,
+                    "creator_id":   e.creator_id,
+                    "title":        e.title,
+                    "description":  e.description,
+                    "event_date":   e.event_date.isoformat(),
+                    "location":     e.location,
+                    "license_code": e.license_code,
+                    "created_at":   e.created_at.isoformat(),
+                    "updated_at":   e.updated_at.isoformat()
+                })
+            return jsonify(resultado), 200
+
+        except Exception as ex:
+            error_logger.error(f"Error en /my-created-events: {str(ex)}", exc_info=True)
+            return jsonify(error="Internal server error"), 500
+        
+    @app.route('/events/<int:event_id>', methods=['GET'])
+    @jwt_required()
+    def get_event(event_id):
+        """Obtiene los detalles de un evento específico"""
+        try:
+            event = Event.query.get(event_id)
+            if not event:
+                return jsonify(error="Evento no encontrado"), 404
+
+            return jsonify({
+                "id": event.id,
+                "creator_id": event.creator_id,
+                "title": event.title,
+                "description": event.description,
+                "event_date": event.event_date.isoformat(),
+                "location": event.location,
+                "license_code": event.license_code,
+                "created_at": event.created_at.isoformat(),
+                "updated_at": event.updated_at.isoformat() if event.updated_at else None
+            }), 200
+
+        except Exception as ex:
+            error_logger.error(f"Error en /events/{event_id}: {str(ex)}", exc_info=True)
+            return jsonify(error="Error al obtener el evento"), 500
+        
+    @app.route('/events/<int:event_id>', methods=['PUT'])
+    @jwt_required()
+    def update_event(event_id):
+        """
+        Permite editar un evento si el usuario autenticado es el creator.
+        Solo campos: title, description, event_date, location, license_code.
+        """
+        user_id = get_jwt_identity()
+        data = request.get_json() or {}
+
+        ev = Event.query.get(event_id)
+        if not ev:
+            return jsonify(error="Evento no encontrado"), 404
+
+        if ev.creator_id != int(user_id):
+            return jsonify(error="No tienes permiso para editar este evento"), 403
+
+        if ev.event_date < datetime.utcnow():
+            return jsonify(error="No puedes editar un evento que ya pasó"), 400
+
+        title        = data.get('title', ev.title).strip()
+        event_date   = data.get('event_date', None)
+        description  = data.get('description', ev.description)
+        location     = data.get('location', ev.location)
+        license_code = data.get('license_code', ev.license_code)
+
+        if not title or not event_date or not license_code:
+            return jsonify(error="Los campos 'title', 'event_date' y 'license_code' son obligatorios."), 400
+
+        try:
+            nueva_fecha = datetime.fromisoformat(event_date)
+        except ValueError:
+            return jsonify(error="Formato de fecha inválido. Use 'YYYY-MM-DDTHH:MM:SS'."), 400
+
+        ev.title        = title
+        ev.description  = description
+        ev.event_date   = nueva_fecha
+        ev.location     = location
+        ev.license_code = license_code
+
+        try:
+            db.session.commit()
+            return jsonify(msg="Evento actualizado"), 200
+        except Exception as ex:
+            db.session.rollback()
+            error_logger.error(f"Error al actualizar evento {event_id}: {str(ex)}", exc_info=True)
+            return jsonify(error="No se pudo actualizar el evento"), 500
+        
+    @app.route('/notifications', methods=['GET'])
+    @jwt_required()
+    def notifications():
+        """
+        Devuelve notificaciones de todos los eventos a los que el usuario
+        se RSVPó y que han sido modificados (updated_at > created_at).
+        """
+        user_id = get_jwt_identity()
+
+        try:
+            rsvps_accepted = RSVP.query.filter_by(user_id=user_id, status='accepted').all()
+
+            notificaciones = []
+            for r in rsvps_accepted:
+                evento = r.event 
+                if evento.updated_at and evento.updated_at > evento.created_at:
+                    notificaciones.append({
+                        "event_id":   evento.id,
+                        "title":      evento.title,
+                        "old_date":   evento.created_at.isoformat(),
+                        "new_date":   evento.updated_at.isoformat()
+                    })
+
+            return jsonify(notificaciones), 200
+
+        except Exception as ex:
+            error_logger.error(f"Error en /notifications: {str(ex)}", exc_info=True)
+            return jsonify(error="Error interno"), 500
+        
+        
     @app.route('/license-types', methods=['GET'])
     def get_license_types():
         """Get all available Creative Commons license types"""
         try:
-            # Query your license_types table
+            
             query = "SELECT code, description FROM license_types ORDER BY code"
             cursor = db.session.execute(text(query))
             licenses = cursor.fetchall()

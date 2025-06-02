@@ -1,10 +1,13 @@
-//eventos_frontend\src\navigation\EventStack.js
+// eventos_frontend/src/navigation/EventsStack.js
+
 import React from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
 import EventsListScreen from "../screens/EventsListScreen";
 import EventDetailScreen from "../screens/EventDetailScreen";
 import CreateEventScreen from "../screens/CreateEventScreen";
+import CreatedByMeScreen from "../screens/CreatedByMeScreen";
+import EditEventScreen from "../screens/EditEventScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -28,9 +31,19 @@ export default function EventsStack() {
         options={{ title: "Detalle del Evento" }}
       />
       <Stack.Screen
+        name="CreatedByMeScreen"
+        component={CreatedByMeScreen}
+        options={{ title: "Mis Eventos Creados" }}
+      />
+      <Stack.Screen
         name="CreateEvent"
         component={CreateEventScreen}
         options={{ title: "Crear Evento" }}
+      />
+      <Stack.Screen
+        name="EditEvent"
+        component={EditEventScreen}
+        options={{ title: "Editar Evento" }}
       />
     </Stack.Navigator>
   );
