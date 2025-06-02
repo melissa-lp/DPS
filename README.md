@@ -15,7 +15,7 @@ Con el proyecto se logró un 85% de avance:
 https://trello.com/b/lesddTAa
 
 ## Mockups en Figma
-https://www.figma.com/design/qhTxtiFOS2NYgcAg3cUiOx/Evento-Express---Mock-Ups?node-id=0-1&t=hrCSNbPU4JGNlxYY-1
+https://www.figma.com/design/qhTxtiFOS2NYgcAg3cUiOx/Evento-Express---Mock-Ups?node-id=69-2&t=STsNuCWVQLcJkG5D-1
 
 ## 📖 Descripción del proyecto
 
