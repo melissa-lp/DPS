@@ -60,3 +60,24 @@ class Comment(db.Model):
 
     user  = db.relationship("User", back_populates="comments")
     event = db.relationship("Event", back_populates="comments")
+    
+    def seed_license_types():
+   
+        existing = LicenseType.query.first()
+        if existing:
+            return 
+
+        default_licenses = [
+            {"code": "CC-BY",      "description": "Creative Commons Attribution"},
+            {"code": "CC-BY-SA",   "description": "Attribution-ShareAlike"},
+            {"code": "CC-BY-ND",   "description": "Attribution-NoDerivs"},
+            {"code": "CC-BY-NC",   "description": "Attribution-NonCommercial"},
+            {"code": "CC-BY-NC-SA","description": "Attribution-NonCommercial-ShareAlike"},
+            {"code": "CC-BY-NC-ND","description": "Attribution-NonCommercial-NoDerivs"},
+        ]
+
+        for lic in default_licenses:
+            lt = LicenseType(code=lic["code"], description=lic["description"])
+            db.session.add(lt)
+
+        db.session.commit()
