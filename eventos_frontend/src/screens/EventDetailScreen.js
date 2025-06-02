@@ -238,7 +238,7 @@ export default function EventDetailScreen({ route, navigation }) {
                           styles.customButtonTextDisabled,
                       ]}
                     >
-                      {rsvpStatus === "accepted" ? "Asistiendo ✓" : "Asistir"}
+                      {rsvpStatus === "accepted" ? "Asistiré ✓" : "Asistir"}
                     </Text>
                   </TouchableOpacity>
                 </View>

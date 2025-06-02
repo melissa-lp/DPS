@@ -1,4 +1,4 @@
-// eventos_frontend/src/navigation/AppTabs.js
+//eventos_frontend\src\navigation\AppTabs.js
 
 import React from "react";
 import { Platform } from "react-native";
@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import EventsStack from "./EventsStack";
 import MyEventsScreen from "../screens/MyEventsScreen";
+import NotificationsScreen from "../screens/NotificationsScreen";
 import StatsScreen from "../screens/StatsScreen";
 import ProfileScreen from "../screens/ProfileScreen";
 
@@ -27,7 +28,6 @@ export default function AppTabs() {
         tabBarStyle: {
           backgroundColor: "#fff",
           borderTopColor: "#eee",
-
           paddingBottom: insets.bottom,
           paddingTop: 8,
         },
@@ -45,6 +45,9 @@ export default function AppTabs() {
               break;
             case "MyEvents":
               iconName = "checkmark-circle-outline";
+              break;
+            case "Notifications":
+              iconName = "mail-outline";
               break;
             case "Stats":
               iconName = "stats-chart-outline";
@@ -64,11 +67,19 @@ export default function AppTabs() {
         component={EventsStack}
         options={{ title: "Eventos" }}
       />
+
       <Tab.Screen
         name="MyEvents"
         component={MyEventsScreen}
         options={{ title: "Eventos asistidos" }}
       />
+
+      <Tab.Screen
+        name="Notifications"
+        component={NotificationsScreen}
+        options={{ title: "Bandeja de entrada" }}
+      />
+
       <Tab.Screen
         name="Stats"
         component={StatsScreen}

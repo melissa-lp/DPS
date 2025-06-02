@@ -230,7 +230,10 @@ export default function EventsListScreen({ navigation }) {
                 <Text style={styles.menuText}>Crear</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity style={styles.menuItem}>
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={() => navigation.navigate("Notifications")}
+              >
                 <Ionicons name="mail-outline" size={24} color="#333" />
                 <Text style={styles.menuText}>Bandeja de entrada</Text>
               </TouchableOpacity>
@@ -294,10 +297,18 @@ export default function EventsListScreen({ navigation }) {
                     <Ionicons name="home-outline" size={24} color="#333" />
                     <Text style={styles.menuText}>Inicio</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={styles.menuItem}>
+
+                  <TouchableOpacity
+                    style={styles.menuItem}
+                    onPress={() => {
+                      setIsMenuOpen(false);
+                      navigation.navigate("CreatedByMeScreen");
+                    }}
+                  >
                     <Ionicons name="search-outline" size={24} color="#333" />
-                    <Text style={styles.menuText}>Explorar</Text>
+                    <Text style={styles.menuText}>Mis eventos</Text>
                   </TouchableOpacity>
+
                   <TouchableOpacity
                     style={styles.menuItem}
                     onPress={() => {
@@ -312,7 +323,10 @@ export default function EventsListScreen({ navigation }) {
                     />
                     <Text style={styles.menuText}>Crear</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={styles.menuItem}>
+                  <TouchableOpacity
+                    style={styles.menuItem}
+                    onPress={() => navigation.navigate("Notifications")}
+                  >
                     <Ionicons name="mail-outline" size={24} color="#333" />
                     <Text style={styles.menuText}>Bandeja de entrada</Text>
                   </TouchableOpacity>
